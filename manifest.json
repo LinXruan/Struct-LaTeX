@@ -1,0 +1,9 @@
+{
+  "id": "struct-latex",
+  "name": "Struct LaTeX",
+  "version": "0.1.0",
+  "minAppVersion": "1.4.0",
+  "description": "Structure-aware LaTeX editing in Obsidian.",
+  "author": "LinXruan",
+  "isDesktopOnly": false
+}

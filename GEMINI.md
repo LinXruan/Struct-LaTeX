@@ -21,7 +21,10 @@
 - **本地调试环境**：
   - Obsidian 可执行文件：`D:\Install\Obsidian\Obsidian.exe`
   - 测试仓库：`C:\Users\Administrator\Desktop\TestObsidian`（真机验证时注意停用或规避同类插件如 `easy-typing-obsidian` 的按键冲突）
-- **后续演进**：随着工程脚本、目录结构与常用命令落地，同步补充到本文件，保持与代码一致。
+- **源码结构与常用命令**：
+  - `src/parser/`：纯解析层（`types` / `commandTable` / `tokenizer` / `matcher` / `objectFactory` / `bracketBuilders` / `builder` / `deleteResolver`），零 Obsidian/DOM 依赖。
+  - `src/editor/`：CM6 集成层（`mathRegion` / `smartBackspace`）；`src/main.ts` 为插件入口；`tests/` 为自动化单测。
+  - 常用命令：`npm run typecheck`、`npm test`、`npm run build`、`npm run dev`。
 
 ## 3. 通用工程约束
 
