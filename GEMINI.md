@@ -5,7 +5,7 @@
 - 动手前先读本文件，按任务需要查阅 [REQUIRMENT.md](REQUIRMENT.md) 与 [OBSIDIAN_API.md](OBSIDIAN_API.md)。
 - 非平凡改动前必须先落盘 `PLAN/PLAN_<n>.md`，再开始编码。
 - 阻塞、需求模糊或语义不确定时停下来问用户，不要猜测。
-- 完成标准是**构建/类型检查通过且对应场景验证通过**，不是“代码写完”。
+- 完成标准是**构建/类型检查通过、自动化单测全绿、且对应场景在真实 Obsidian 中验证通过**，不是“代码写完”。
 
 ## 1. PLAN 管理机制
 
@@ -16,29 +16,31 @@
 
 ## 2. 项目概况与环境
 
-- **定位**：Obsidian 智能结构化 LaTeX 编辑插件（`struct-latex`），基于词法分词 + 配对栈 / AST（而非正则引擎），支持 CodeMirror 6 实时智能输入、光标跳转与结构化原子删除。
+- **定位**：Obsidian 智能结构化 LaTeX 编辑插件（`struct-latex`），基于「词法分词 + 作用域配对栈 + 对象关系树」而非正则引擎，实现 CodeMirror 6 实时结构化原子删除、智能光标跳转与智能输入。
 - **技术栈**：TypeScript + esbuild + Obsidian API + CodeMirror 6；`obsidian`、`electron`、`@codemirror/*`、`@lezer/*` 仅作 `external` 依赖，禁止打包进产物。
 - **本地调试环境**：
   - Obsidian 可执行文件：`D:\Install\Obsidian\Obsidian.exe`
-  - 测试仓库：`C:\Users\Administrator\Desktop\TestObsidian`（真机验证时注意停用或规避同类插件如 `easy-typing-obsidian` 的按键冲突）
+  - 测试仓库：`C:\Users\Administrator\Desktop\TestObsidian`（真机验证时注意停用 `easy-typing-obsidian` 以免按键冲突；写配置文件务必使用无 BOM UTF-8）
 - **源码结构与常用命令**：
   - `src/parser/`：纯解析层（`types` / `commandTable` / `tokenizer` / `matcher` / `objectFactory` / `bracketBuilders` / `builder` / `deleteResolver` / `jumpResolver`），零 Obsidian/DOM 依赖。
-  - `src/editor/`：CM6 集成层（`mathRegion` / `smartBackspace` / `smartJump`）；`src/main.ts` 为插件入口；`tests/` 为自动化单测。
+  - `src/editor/`：CM6 集成层（`mathRegion` / `smartBackspace` / `smartJump`）；`src/main.ts` 为插件入口。
+  - `tests/` & `scripts/run-tests.mjs`：自动化单测（自动递归执行 `tests/**/*.test.ts`）。
   - 常用命令：`npm run typecheck`、`npm test`、`npm run build`、`npm run dev`。
 
-## 3. 通用工程约束
+## 3. 核心架构与工程约束
 
-- **分层解耦**：数学区域判定、词法分词、结构栈/AST、CM6 编辑器交互按职责分层，纯解析逻辑不耦合 Obsidian/DOM，便于单测与演进。
-- **数学区与编辑器安全**：优先复用 CM6 `syntaxTree(state)` 判定数学模式，禁止用全局奇偶 `$$` 扫描；IME 合成态（`composing` / `isComposing`）下严禁拦截改写；未命中结构条件或非空选区时返回 `false` 交还原生处理；每次结构编辑以原子事务提交并标注专属 `userEvent`。
+- **纯粹对象与零特例原则**：一切构建在统一对象模型（`BracketObject` / `WordObject` / `AtomObject`）、统一空白模型（空格与换行同归 `whitespace` 并跟随前实体/括号开界，`\text{}` 文本槽除外）与单向星形并联依赖之上；优先精简抽象，拒绝局部特判补丁。
+- **分层解耦**：数学区域判定、词法分词、结构栈/树、查询解析与 CM6 交互按职责分层，纯解析逻辑不耦合 Obsidian/DOM，按不可变 `state.doc` 缓存（`WeakMap<Text, ...>`）。
+- **数学区与编辑器安全**：复用 CM6 `syntaxTree(state)` 判定数学模式，禁止全局奇偶 `$$` 扫描；`readOnly`、IME 合成态（`view.composing` / `isComposing`）、多光标或非空选区一律放行返回 `false`；文档修改以单步原子事务提交（`isolateHistory.of("full")` + 专属 `userEvent`），纯光标移动不污染撤销栈。
 - **删除优先**：重构必须删除被取代的文件、字段与分支，不保留 `_old` / `_v2` / 兼容壳，删除后全库搜索确认无残留。
 - **规模控制**：单文件目标 ≤300 行、单函数目标 ≤120 行，超长逻辑优先按职责拆分模块。
 - **语言约定**：代码与注释用英文，用户可见文案与项目文档用中文。
 
 ## 4. 修改后检查
 
-1. TypeScript 类型检查与构建通过；若存在自动化测试，全部通过。
-2. 涉及编辑器行为改动时，将产物同步到测试仓库并在真实 Obsidian 中实测对应场景，确认无控制台报错且不破坏原生输入、缩进与 IME。
-3. 仓库与测试仓库均不残留临时日志、截图或无关调试文件；行为变化已同步更新 `PLAN/` 与相关文档。
+1. `npm run typecheck`、`npm test` 与 `npm run build` 全部通过，且产物 `main.js` 未内联外部依赖。
+2. 涉及编辑器行为改动时，将 `manifest.json` 与 `main.js` 同步至测试仓库并在真实 Obsidian 中实测对应场景，确认控制台零报错且不破坏原生输入、缩进、撤销栈与 IME。
+3. 仓库与测试仓库均不残留临时笔记、日志、截图或备份文件；行为变化已同步更新 `PLAN/` 与相关文档。
 
 ## 5. 提交规范
 
