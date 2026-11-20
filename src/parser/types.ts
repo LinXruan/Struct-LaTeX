@@ -9,6 +9,7 @@ export type BracketSubtype =
 
 export interface Slot {
   openFrom: number;
+  openCoreTo: number;
   bodyFrom: number;
   bodyTo: number;
   closeTo: number;
@@ -62,5 +63,11 @@ export interface MathTree {
 
 export interface DeleteSpan {
   from: number;
+  to: number;
+}
+
+export interface JumpSegment {
+  coreFrom: number;
+  coreTo: number;
   to: number;
 }

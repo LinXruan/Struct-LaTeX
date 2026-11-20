@@ -22,8 +22,7 @@ export type TokenKind =
   | "prime"
   | "align_break"
   | "command"
-  | "hspace"
-  | "newline"
+  | "whitespace"
   | "atom";
 
 export interface Token {
@@ -81,9 +80,19 @@ function isHorizontalSpace(ch: string): boolean {
   return ch === " " || ch === "\t";
 }
 
+function isWhitespace(ch: string): boolean {
+  return ch === " " || ch === "\t" || ch === "\r" || ch === "\n";
+}
+
 function skipHspace(src: string, idx: number): number {
   let i = idx;
   while (i < src.length && isHorizontalSpace(src[i])) i++;
+  return i;
+}
+
+function skipWhitespace(src: string, idx: number): number {
+  let i = idx;
+  while (i < src.length && isWhitespace(src[i])) i++;
   return i;
 }
 
@@ -195,16 +204,9 @@ export function tokenizeMath(src: string): Token[] {
   while (i < src.length) {
     const ch = src[i];
 
-    if (ch === "\r" || ch === "\n") {
-      const end = ch === "\r" && src[i + 1] === "\n" ? i + 2 : i + 1;
-      tokens.push({ kind: "newline", from: i, to: end, text: src.slice(i, end) });
-      i = end;
-      continue;
-    }
-
-    if (isHorizontalSpace(ch)) {
-      const end = skipHspace(src, i);
-      tokens.push({ kind: "hspace", from: i, to: end, text: src.slice(i, end) });
+    if (isWhitespace(ch)) {
+      const end = skipWhitespace(src, i);
+      tokens.push({ kind: "whitespace", from: i, to: end, text: src.slice(i, end) });
       i = end;
       continue;
     }

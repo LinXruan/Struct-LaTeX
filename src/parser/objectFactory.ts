@@ -17,9 +17,9 @@ export interface BuildContext {
   nextId: number;
 }
 
-export function skipHspaceTokens(tokens: readonly Token[], start: number, end: number): number {
+export function skipWhitespaceTokens(tokens: readonly Token[], start: number, end: number): number {
   let i = start;
-  while (i < end && tokens[i].kind === "hspace") i++;
+  while (i < end && tokens[i].kind === "whitespace") i++;
   return i;
 }
 
@@ -114,15 +114,16 @@ export function buildBracketTriggers(
   const triggers: TriggerRange[] = [];
 
   if (headTo !== undefined) {
-    triggers.push({ from: headTo, to: headTo });
+    const firstOpen = slots[0]?.openFrom ?? headTo;
+    triggers.push({ from: headTo, to: firstOpen });
   }
-  if (extraOpenTrigger !== undefined && extraOpenTrigger !== slots[0]?.bodyFrom) {
+  if (extraOpenTrigger !== undefined && extraOpenTrigger !== slots[0]?.openCoreTo) {
     triggers.push({ from: extraOpenTrigger, to: extraOpenTrigger });
   }
 
   for (let s = 0; s < slots.length; s++) {
     const slot = slots[s];
-    triggers.push({ from: slot.bodyFrom, to: slot.bodyFrom });
+    triggers.push({ from: slot.openCoreTo, to: slot.bodyFrom });
     if (s < slots.length - 1) {
       const nextSlot = slots[s + 1];
       triggers.push({ from: slot.closeTo, to: nextSlot.openFrom });

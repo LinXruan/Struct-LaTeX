@@ -84,12 +84,12 @@ describe("Structural Delete — Uniform Objects, Single-Char Hosts & Transitivit
     expectDelete("ab▮_{2}", "a▮");
   });
 
-  it("handles brace-less single-token scripts `a_1^2` and `a_\\alpha`", () => {
+  it("treats brace-less single-token scripts `a_1^2` and `a_\\alpha` as solid word dependents", () => {
     expectDelete("a▮_1^2", "▮");
     expectDelete("a_1^2▮", "a_1▮");
-    expectDelete("a_1^▮2", "a_1▮");
+    expectNative("a_1^▮2");
     expectDelete("a_1▮^2", "a▮^2");
-    expectDelete("a_▮1^2", "a▮^2");
+    expectNative("a_▮1^2");
     expectDelete("a_\\alpha▮", "a▮");
     expectDelete("a▮_\\alpha", "▮");
     expectNative("a_\\alp▮ha");
@@ -181,7 +181,7 @@ describe("Structural Delete — Delimiters, Mixed Intervals, Bare Bars & Align B
   });
 });
 
-describe("Structural Delete — Scheme 1 Trailing Whitespace & 3 Hard Boundaries", () => {
+describe("Structural Delete — Unified Whitespace & Text Mode Boundary", () => {
   it("attaches trailing horizontal spaces to preceding object and links across spaces", () => {
     expectDelete("a   ▮", "▮");
     expectDelete("a ▮  ", "▮");
@@ -196,17 +196,24 @@ describe("Structural Delete — Scheme 1 Trailing Whitespace & 3 Hard Boundaries
     expectDelete("\\begin{bmatrix}1&2\\end{bmatrix} ▮", "▮");
   });
 
-  it("enforces hard boundary 1: never absorbs across newlines", () => {
-    expectNative("a + b\n    ▮c");
+  it("treats newlines identically to spaces for trailing whitespace absorption", () => {
+    expectDelete("a + b\n    ▮c", "a + ▮c");
+    expectDelete("a + b▮\n    c", "a + ▮c");
+    expectDelete("a\n_{2}▮", "a\n▮");
+    expectDelete("a▮\n_{2}", "▮");
   });
 
-  it("enforces hard boundary 2: leading spaces after opener stay unowned", () => {
-    expectNative("\\left(   ▮a\\right)");
+  it("absorbs leading whitespace (spaces & newlines) into bracket openers uniformly", () => {
+    expectDelete("\\left(   ▮a\\right)", "▮");
+    expectDelete("\\left( ▮  a\\right)", "▮");
     expectDelete("\\left(▮   a\\right)", "▮");
+    expectDelete("(   ▮1+2)", "▮");
+    expectDelete("\\begin{bmatrix}\n  ▮1 & 2\n\\end{bmatrix}", "▮");
   });
 
-  it("enforces hard boundary 3: disables space merging inside \\text{...}", () => {
+  it("preserves text-mode boundary: disables whitespace merging inside \\text{...}", () => {
     expectNative("\\text{hello ▮world}");
+    expectNative("\\text{  ▮hello}");
     expectDelete("\\text{▮hello world}", "▮");
     expectDelete("\\text{hello world}▮", "▮");
   });

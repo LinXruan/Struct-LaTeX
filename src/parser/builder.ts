@@ -47,13 +47,7 @@ function buildRange(
   while (i < endIdx) {
     const tok = ctx.tokens[i];
 
-    if (tok.kind === "newline") {
-      lastSibling = undefined;
-      i++;
-      continue;
-    }
-
-    if (tok.kind === "hspace") {
+    if (tok.kind === "whitespace") {
       if (!textMode && lastSibling) absorbTrailingSpace(lastSibling, tok.to);
       i++;
       continue;

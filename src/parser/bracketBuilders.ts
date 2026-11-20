@@ -7,7 +7,8 @@ import {
 import {
   buildBracketTriggers,
   BuildContext,
-  skipHspaceTokens,
+  createWord,
+  skipWhitespaceTokens,
 } from "./objectFactory";
 import { BracketObject, BracketSubtype, LatexObject, Slot } from "./types";
 
@@ -19,6 +20,78 @@ export type RangeBuilderFn = (
   textMode: boolean
 ) => LatexObject[];
 
+interface SlotDraft {
+  slot: Slot;
+  bodyStartIdx: number;
+  closeIdx: number;
+  textMode: boolean;
+}
+
+function createSlotDraft(
+  ctx: BuildContext,
+  openFrom: number,
+  openCoreTo: number,
+  bodyCandidateIdx: number,
+  closeIdx: number,
+  textMode: boolean
+): SlotDraft {
+  const closeTok = ctx.tokens[closeIdx];
+  const bodyStartIdx = textMode
+    ? bodyCandidateIdx
+    : skipWhitespaceTokens(ctx.tokens, bodyCandidateIdx, closeIdx);
+  const bodyFrom =
+    bodyStartIdx > bodyCandidateIdx ? ctx.tokens[bodyStartIdx - 1].to : openCoreTo;
+
+  return {
+    slot: {
+      openFrom,
+      openCoreTo,
+      bodyFrom,
+      bodyTo: closeTok.from,
+      closeTo: closeTok.to,
+      children: [],
+      textMode,
+    },
+    bodyStartIdx,
+    closeIdx,
+    textMode,
+  };
+}
+
+function makeBracketNode(
+  ctx: BuildContext,
+  subtype: BracketSubtype,
+  from: number,
+  coreTo: number,
+  slots: Slot[],
+  parent: BracketObject | undefined,
+  options?: { name?: string; headTo?: number; extraOpenTrigger?: number }
+): BracketObject {
+  const node: BracketObject = {
+    id: ctx.nextId++,
+    kind: "bracket",
+    subtype,
+    name: options?.name,
+    headTo: options?.headTo,
+    from,
+    coreFrom: from,
+    coreTo,
+    to: coreTo,
+    parent,
+    dependents: [],
+    slots,
+    triggers: buildBracketTriggers(
+      subtype,
+      slots,
+      coreTo,
+      options?.headTo,
+      options?.extraOpenTrigger
+    ),
+  };
+  ctx.allObjects.push(node);
+  return node;
+}
+
 export function buildEnvBracket(
   ctx: BuildContext,
   openIdx: number,
@@ -29,10 +102,10 @@ export function buildEnvBracket(
   const openTok = ctx.tokens[openIdx];
   const closeTok = ctx.tokens[closeIdx];
   const envName = openTok.envName ?? "";
-  let bodyStartIdx = openIdx + 1;
+  let headerEndIdx = openIdx + 1;
 
   if (ENV_OPTIONAL_HEADER_ARGS.has(envName)) {
-    const peek = skipHspaceTokens(ctx.tokens, bodyStartIdx, closeIdx);
+    const peek = skipWhitespaceTokens(ctx.tokens, headerEndIdx, closeIdx);
     const optClose = ctx.matches.get(peek);
     if (
       peek < closeIdx &&
@@ -43,13 +116,13 @@ export function buildEnvBracket(
     ) {
       const argText = ctx.source.slice(ctx.tokens[peek].to, ctx.tokens[optClose].from).trim();
       if (argText === "t" || argText === "b" || argText === "c") {
-        bodyStartIdx = optClose + 1;
+        headerEndIdx = optClose + 1;
       }
     }
   }
 
   if (ENV_MANDATORY_HEADER_ARGS.has(envName)) {
-    const peek = skipHspaceTokens(ctx.tokens, bodyStartIdx, closeIdx);
+    const peek = skipWhitespaceTokens(ctx.tokens, headerEndIdx, closeIdx);
     const argClose = ctx.matches.get(peek);
     if (
       peek < closeIdx &&
@@ -57,42 +130,18 @@ export function buildEnvBracket(
       argClose !== undefined &&
       argClose < closeIdx
     ) {
-      bodyStartIdx = argClose + 1;
+      headerEndIdx = argClose + 1;
     }
   }
 
-  const bodyFrom = bodyStartIdx > openIdx + 1 ? ctx.tokens[bodyStartIdx - 1].to : openTok.to;
-  const slot: Slot = {
-    openFrom: openTok.from,
-    bodyFrom,
-    bodyTo: closeTok.from,
-    closeTo: closeTok.to,
-    children: [],
-  };
-
-  const node: BracketObject = {
-    id: ctx.nextId++,
-    kind: "bracket",
-    subtype: "env",
+  const openCoreTo = headerEndIdx > openIdx + 1 ? ctx.tokens[headerEndIdx - 1].to : openTok.to;
+  const draft = createSlotDraft(ctx, openTok.from, openCoreTo, headerEndIdx, closeIdx, false);
+  const node = makeBracketNode(ctx, "env", openTok.from, closeTok.to, [draft.slot], parent, {
     name: envName,
-    from: openTok.from,
-    coreFrom: openTok.from,
-    coreTo: closeTok.to,
-    to: closeTok.to,
-    parent,
-    dependents: [],
-    slots: [slot],
-    triggers: buildBracketTriggers(
-      "env",
-      [slot],
-      closeTok.to,
-      undefined,
-      bodyStartIdx > openIdx + 1 ? openTok.to : undefined
-    ),
-  };
+    extraOpenTrigger: headerEndIdx > openIdx + 1 ? openTok.to : undefined,
+  });
 
-  ctx.allObjects.push(node);
-  slot.children = buildRange(ctx, bodyStartIdx, closeIdx, node, false);
+  draft.slot.children = buildRange(ctx, draft.bodyStartIdx, closeIdx, node, false);
   return node;
 }
 
@@ -107,41 +156,10 @@ export function buildPairedBracket(
 ): BracketObject {
   const openTok = ctx.tokens[openIdx];
   const closeTok = ctx.tokens[closeIdx];
-  const nextTok = openIdx + 1 < closeIdx ? ctx.tokens[openIdx + 1] : undefined;
-  const endsWithLetter = /[a-zA-Z]$/.test(openTok.text);
-  const cmdSepEnd = endsWithLetter && nextTok?.kind === "hspace" ? nextTok.to : openTok.to;
+  const draft = createSlotDraft(ctx, openTok.from, openTok.to, openIdx + 1, closeIdx, textMode);
+  const node = makeBracketNode(ctx, subtype, openTok.from, closeTok.to, [draft.slot], parent);
 
-  const slot: Slot = {
-    openFrom: openTok.from,
-    bodyFrom: cmdSepEnd,
-    bodyTo: closeTok.from,
-    closeTo: closeTok.to,
-    children: [],
-    textMode,
-  };
-
-  const triggers = buildBracketTriggers(subtype, [slot], closeTok.to);
-  if (cmdSepEnd > openTok.to) {
-    triggers[0] = { from: openTok.to, to: cmdSepEnd };
-  }
-
-  const node: BracketObject = {
-    id: ctx.nextId++,
-    kind: "bracket",
-    subtype,
-    from: openTok.from,
-    coreFrom: openTok.from,
-    coreTo: closeTok.to,
-    to: closeTok.to,
-    parent,
-    dependents: [],
-    slots: [slot],
-    triggers,
-  };
-
-  ctx.allObjects.push(node);
-  const bodyStartIdx = cmdSepEnd > openTok.to ? openIdx + 2 : openIdx + 1;
-  slot.children = buildRange(ctx, bodyStartIdx, closeIdx, node, textMode);
+  draft.slot.children = buildRange(ctx, draft.bodyStartIdx, closeIdx, node, textMode);
   return node;
 }
 
@@ -159,7 +177,7 @@ export function tryBuildCommandBracket(
 
   if (sig) {
     if (sig.optionalBracket) {
-      const peek = skipHspaceTokens(ctx.tokens, cursor, endIdx);
+      const peek = skipWhitespaceTokens(ctx.tokens, cursor, endIdx);
       const optClose = ctx.matches.get(peek);
       if (
         peek < endIdx &&
@@ -174,7 +192,7 @@ export function tryBuildCommandBracket(
     }
 
     for (let m = 0; m < sig.mandatory; m++) {
-      const peek = skipHspaceTokens(ctx.tokens, cursor, endIdx);
+      const peek = skipWhitespaceTokens(ctx.tokens, cursor, endIdx);
       const closeIdx = ctx.matches.get(peek);
       if (
         peek >= endIdx ||
@@ -205,37 +223,24 @@ export function tryBuildCommandBracket(
   }
 
   const lastCloseTok = ctx.tokens[slotRanges[slotRanges.length - 1].closeIdx];
-  const slots: Slot[] = slotRanges.map((r) => ({
-    openFrom: ctx.tokens[r.openIdx].from,
-    bodyFrom: ctx.tokens[r.openIdx].to,
-    bodyTo: ctx.tokens[r.closeIdx].from,
-    closeTo: ctx.tokens[r.closeIdx].to,
-    children: [],
-    textMode: r.textMode,
-  }));
+  const drafts = slotRanges.map((r) => {
+    const openTok = ctx.tokens[r.openIdx];
+    return createSlotDraft(ctx, openTok.from, openTok.to, r.openIdx + 1, r.closeIdx, r.textMode);
+  });
 
-  const node: BracketObject = {
-    id: ctx.nextId++,
-    kind: "bracket",
-    subtype: "cmd",
-    name: cmdTok.text,
-    headTo: cmdTok.to,
-    from: cmdTok.from,
-    coreFrom: cmdTok.from,
-    coreTo: lastCloseTok.to,
-    to: lastCloseTok.to,
+  const node = makeBracketNode(
+    ctx,
+    "cmd",
+    cmdTok.from,
+    lastCloseTok.to,
+    drafts.map((d) => d.slot),
     parent,
-    dependents: [],
-    slots,
-    triggers: buildBracketTriggers("cmd", slots, lastCloseTok.to, cmdTok.to),
-  };
+    { name: cmdTok.text, headTo: cmdTok.to }
+  );
 
-  ctx.allObjects.push(node);
-  for (let s = 0; s < slotRanges.length; s++) {
-    const r = slotRanges[s];
-    slots[s].children = buildRange(ctx, r.openIdx + 1, r.closeIdx, node, r.textMode);
+  for (const draft of drafts) {
+    draft.slot.children = buildRange(ctx, draft.bodyStartIdx, draft.closeIdx, node, draft.textMode);
   }
-
   return { node, nextIdx: cursor };
 }
 
@@ -245,9 +250,9 @@ export function tryBuildScript(
   endIdx: number,
   buildRange: RangeBuilderFn,
   parent?: BracketObject
-): { node: BracketObject; nextIdx: number } | null {
+): { node: LatexObject; nextIdx: number } | null {
   const opTok = ctx.tokens[opIdx];
-  const argIdx = skipHspaceTokens(ctx.tokens, opIdx + 1, endIdx);
+  const argIdx = skipWhitespaceTokens(ctx.tokens, opIdx + 1, endIdx);
   if (argIdx >= endIdx) return null;
 
   const argTok = ctx.tokens[argIdx];
@@ -256,66 +261,29 @@ export function tryBuildScript(
     const closeIdx = ctx.matches.get(argIdx);
     if (closeIdx === undefined || closeIdx >= endIdx) return null;
     const closeTok = ctx.tokens[closeIdx];
-    const slot: Slot = {
-      openFrom: argTok.from,
-      bodyFrom: argTok.to,
-      bodyTo: closeTok.from,
-      closeTo: closeTok.to,
-      children: [],
-    };
-    const node: BracketObject = {
-      id: ctx.nextId++,
-      kind: "bracket",
-      subtype: "script",
+    const draft = createSlotDraft(ctx, argTok.from, argTok.to, argIdx + 1, closeIdx, false);
+    const node = makeBracketNode(ctx, "script", opTok.from, closeTok.to, [draft.slot], parent, {
       name: opTok.text,
       headTo: opTok.to,
-      from: opTok.from,
-      coreFrom: opTok.from,
-      coreTo: closeTok.to,
-      to: closeTok.to,
-      parent,
-      dependents: [],
-      slots: [slot],
-      triggers: buildBracketTriggers("script", [slot], closeTok.to, opTok.to),
-    };
-    ctx.allObjects.push(node);
-    slot.children = buildRange(ctx, argIdx + 1, closeIdx, node, false);
+    });
+    draft.slot.children = buildRange(ctx, draft.bodyStartIdx, closeIdx, node, false);
     return { node, nextIdx: closeIdx + 1 };
   }
 
-  // Brace-less single-token script (`_1`, `^2`, `_\alpha`) is an atomic script unit
+  // Brace-less single-token script (`_2`, `^n`, `_\alpha`) is a solid WordObject
   if (
     argTok.kind === "atom" ||
     argTok.kind === "prime" ||
     (argTok.kind === "command" && !POSTFIX_MODIFIER_COMMANDS.has(argTok.text))
   ) {
-    const slot: Slot = {
-      openFrom: argTok.from,
-      bodyFrom: argTok.from,
-      bodyTo: argTok.to,
-      closeTo: argTok.to,
-      children: [],
-    };
-    const node: BracketObject = {
-      id: ctx.nextId++,
-      kind: "bracket",
-      subtype: "script",
-      name: opTok.text,
-      headTo: opTok.to,
-      from: opTok.from,
-      coreFrom: opTok.from,
-      coreTo: argTok.to,
-      to: argTok.to,
-      parent,
-      dependents: [],
-      slots: [slot],
-      triggers: [
-        { from: opTok.to, to: opTok.to },
-        { from: argTok.to, to: argTok.to },
-      ],
-    };
-    ctx.allObjects.push(node);
-    return { node, nextIdx: argIdx + 1 };
+    const word = createWord(
+      ctx,
+      opTok.from,
+      argTok.to,
+      ctx.source.slice(opTok.from, argTok.to),
+      parent
+    );
+    return { node: word, nextIdx: argIdx + 1 };
   }
 
   return null;

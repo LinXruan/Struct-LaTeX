@@ -1,8 +1,9 @@
 import { syntaxTree } from "@codemirror/language";
-import { EditorState } from "@codemirror/state";
+import { EditorState, Text } from "@codemirror/state";
 import { SyntaxNode } from "@lezer/common";
 import { buildMathTree } from "../parser/builder";
-import { MathTree } from "../parser/types";
+import { collectJumpSegments } from "../parser/jumpResolver";
+import { JumpSegment, MathTree } from "../parser/types";
 
 export const MAX_MATH_BLOCK_CHARS = 10_000;
 export const MAX_MATH_BLOCK_LINES = 200;
@@ -19,6 +20,7 @@ export interface MathRegion {
 export interface AnalyzedMathBlock {
   region: MathRegion;
   tree: MathTree;
+  jumpSegments: JumpSegment[];
 }
 
 interface CachedEntry {
@@ -27,7 +29,7 @@ interface CachedEntry {
   analyzed: AnalyzedMathBlock;
 }
 
-const stateCache = new WeakMap<EditorState, CachedEntry>();
+const docCache = new WeakMap<Text, CachedEntry>();
 
 function hasNameFragment(node: SyntaxNode | null, fragment: string): boolean {
   let cur = node;
@@ -237,13 +239,14 @@ export function findMathRegion(state: EditorState, pos: number): MathRegion | nu
 }
 
 /**
- * Lazily builds (and caches per EditorState) the object relation tree for the current math block.
+ * Lazily builds (and caches per immutable CM6 Text doc) the object relation tree
+ * and flattened jump segments for the current math block.
  */
 export function getAnalyzedMathBlock(state: EditorState, pos: number): AnalyzedMathBlock | null {
   const region = findMathRegion(state, pos);
   if (!region) return null;
 
-  const cached = stateCache.get(state);
+  const cached = docCache.get(state.doc);
   if (
     cached &&
     cached.contentFrom === region.contentFrom &&
@@ -254,9 +257,10 @@ export function getAnalyzedMathBlock(state: EditorState, pos: number): AnalyzedM
 
   const source = state.doc.sliceString(region.contentFrom, region.contentTo);
   const tree = buildMathTree(source);
-  const analyzed: AnalyzedMathBlock = { region, tree };
+  const jumpSegments = collectJumpSegments(tree);
+  const analyzed: AnalyzedMathBlock = { region, tree, jumpSegments };
 
-  stateCache.set(state, {
+  docCache.set(state.doc, {
     contentFrom: region.contentFrom,
     contentTo: region.contentTo,
     analyzed,
