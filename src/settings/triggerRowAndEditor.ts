@@ -1,7 +1,7 @@
 import { setIcon, Setting, ToggleComponent } from "obsidian";
 import { t } from "../i18n";
 import { cloneTriggerRule, evaluateTriggerPreview, validateTriggerRule } from "../input/triggerEngine";
-import { TextTriggerRule, TriggerCategory, TriggerRule } from "../input/triggerTypes";
+import { TriggerCategory, TriggerRule } from "../input/triggerTypes";
 import { RuleType } from "../input/types";
 import { attachPointerDragSort, ReorderCallback } from "./ruleDragSort";
 import { renderTriggerGuardsFields } from "./ruleEditorFields";
@@ -122,7 +122,7 @@ export function renderTriggerRuleRow(
     };
 
     trigInput.addEventListener("input", () => {
-      const textDraft = localDraft as TextTriggerRule;
+      const textDraft = localDraft;
       textDraft.trigger = trigInput.value;
       if (textDraft.name === defaultDraftName && textDraft.trigger.trim()) {
         textDraft.name = textDraft.trigger.trim();
@@ -267,8 +267,7 @@ export function renderTriggerRuleEditorView(
   refreshPreview();
   renderTriggerGuardsFields(view, draft, refreshPreview);
 
-  const errorEl = view.createDiv({ cls: "struct-latex-modal-error" });
-  errorEl.style.display = "none";
+  const errorEl = view.createDiv({ cls: "struct-latex-modal-error struct-latex-hidden" });
 
   const footer = view.createDiv({ cls: "struct-latex-editor-footer" });
   footer.createEl("button", { text: t("modal.cancel") }).addEventListener("click", options.onCancel);
@@ -276,14 +275,14 @@ export function renderTriggerRuleEditorView(
     void (async () => {
       const check = validateTriggerRule(draft);
       if (!check.valid) {
-        errorEl.style.display = "block";
+        errorEl.removeClass("struct-latex-hidden");
         errorEl.setText(check.errors.join("; "));
         return;
       }
       try {
         await options.onSave(draft);
       } catch (err) {
-        errorEl.style.display = "block";
+        errorEl.removeClass("struct-latex-hidden");
         errorEl.setText((err as Error).message);
       }
     })();

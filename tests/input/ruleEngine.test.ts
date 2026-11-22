@@ -9,7 +9,7 @@ import {
   evaluateHotkey,
   evaluateRulePreview,
 } from "../../src/input/ruleEngine";
-import { InputRule, OutputDialect } from "../../src/input/types";
+import { InputRule } from "../../src/input/types";
 import { validateRule, validateRulesFile } from "../../src/input/validation";
 import { buildMathTree } from "../../src/parser/builder";
 
@@ -366,7 +366,7 @@ describe("Rule Engine — Triggers, Guards, Structural JS Context & Error Isolat
     assert.ok(res);
     assert.equal(res.action.insert, "\\chi");
 
-    const previewErr = evaluateRulePreview(buggy, "latex" as OutputDialect);
+    const previewErr = evaluateRulePreview(buggy, "latex");
     assert.ok(previewErr.error?.includes("boom"));
   });
 

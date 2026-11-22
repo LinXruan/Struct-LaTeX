@@ -200,8 +200,7 @@ export function renderRuleEditorView(
   refreshPreview();
   renderGuardsFields(view, draft, () => refreshPreview());
 
-  const errorEl = view.createDiv({ cls: "struct-latex-modal-error" });
-  errorEl.style.display = "none";
+  const errorEl = view.createDiv({ cls: "struct-latex-modal-error struct-latex-hidden" });
 
   const footer = view.createDiv({ cls: "struct-latex-editor-footer" });
   footer.createEl("button", { text: t("modal.cancel") }).addEventListener("click", handleCancel);
@@ -213,7 +212,7 @@ export function renderRuleEditorView(
         await options.onSave(draft);
         disposeAll();
       } catch (err) {
-        errorEl.style.display = "block";
+        errorEl.removeClass("struct-latex-hidden");
         errorEl.setText((err as Error).message);
       }
     })();

@@ -11,7 +11,7 @@ function formatTexForMathJax(rawTex: string): string {
   let tex = rawTex.trim();
   if (!tex) return "\\square";
 
-  tex = tex.replace(/(?<!\\)\{\}/g, "{\\square}");
+  tex = tex.replace(/(^|[^\\])((?:\\\\)*)\{\}/g, "$1$2{\\square}");
   tex = tex.replace(/\[(\s*)\]/g, "[\\square]");
   tex = tex.replace(/_\{=\}/g, "_{\\square=}");
 

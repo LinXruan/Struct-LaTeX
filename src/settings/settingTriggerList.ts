@@ -68,20 +68,19 @@ function renderTriggerInlinePanel(
       cls: "struct-latex-js-editor struct-latex-json-transfer",
     });
     textarea.placeholder = t("trigger.panel.importPlaceholder");
-    const errEl = panel.createDiv({ cls: "struct-latex-modal-error" });
-    errEl.style.display = "none";
+    const errEl = panel.createDiv({ cls: "struct-latex-modal-error struct-latex-hidden" });
     const footer = panel.createDiv({ cls: "struct-latex-inline-panel-actions" });
     footer.createEl("button", { text: t("modal.cancel") }).addEventListener("click", onClose);
     footer.createEl("button", { cls: "mod-cta", text: t("modals.json.importBtn") }).addEventListener("click", () => {
       void (async () => {
         try {
-          errEl.style.display = "none";
+          errEl.addClass("struct-latex-hidden");
           await triggerStore.importJson(textarea.value);
           new Notice(t("modals.json.importedNotice"));
           onMutated();
           onClose();
         } catch (err) {
-          errEl.style.display = "block";
+          errEl.removeClass("struct-latex-hidden");
           errEl.setText((err as Error).message);
         }
       })();

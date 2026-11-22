@@ -3,7 +3,7 @@
   "name": "Struct LaTeX",
   "version": "1.0.0",
   "minAppVersion": "1.4.0",
-  "description": "Structure-aware LaTeX editing in Obsidian.",
+  "description": "Structure-aware LaTeX editing.",
   "author": "LinXruan",
   "isDesktopOnly": false
 }

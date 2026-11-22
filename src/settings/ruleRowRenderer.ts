@@ -2,7 +2,7 @@ import { setIcon, ToggleComponent } from "obsidian";
 import { t } from "../i18n";
 import { formatTriggerBadge } from "../input/keybindUtils";
 import { evaluateRulePreview } from "../input/ruleEngine";
-import { InputRule, OutputDialect, TextInputRule } from "../input/types";
+import { InputRule, OutputDialect } from "../input/types";
 import { cloneRule, validateRule } from "../input/validation";
 import { LazyMathPreviewManager } from "./mathPreview";
 import { attachPointerDragSort, ReorderCallback } from "./ruleDragSort";
@@ -102,7 +102,7 @@ export function renderRuleRow(
     };
 
     const onInputChange = () => {
-      const textDraft = localDraft as TextInputRule;
+      const textDraft = localDraft;
       textDraft.trigger = trigInput.value;
       textDraft.replacement = repInput.value;
       if (textDraft.name === defaultDraftName && textDraft.trigger.trim()) {

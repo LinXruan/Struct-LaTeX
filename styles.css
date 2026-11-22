@@ -7,6 +7,14 @@
   display: none !important;
 }
 
+.struct-latex-flip-none {
+  transition: none !important;
+}
+
+.struct-latex-flip-animate {
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+
 .struct-latex-subpage-header,
 .struct-latex-editor-header {
   display: flex;

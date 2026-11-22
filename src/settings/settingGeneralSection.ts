@@ -188,16 +188,15 @@ export function renderKeybindFeaturePage(parent: HTMLElement, options: KeybindFe
       text.onChange((val) => void commitKeybind(val, false));
     });
 
-  const errEl = parent.createDiv({ cls: "struct-latex-field-error" });
-  errEl.style.display = "none";
+  const errEl = parent.createDiv({ cls: "struct-latex-field-error struct-latex-hidden" });
 
   const setError = (msg: string | null) => {
     if (!msg) {
       errEl.empty();
-      errEl.style.display = "none";
+      errEl.addClass("struct-latex-hidden");
       return;
     }
-    errEl.style.display = "block";
+    errEl.removeClass("struct-latex-hidden");
     errEl.setText(msg);
   };
   const commitKeybind = async (raw: string, syncInput: boolean) => {

@@ -114,10 +114,10 @@ export function showValidationFailure(errorBanner: HTMLElement, rule: InputRule)
   const res = validateRule(rule);
   if (res.valid) {
     errorBanner.empty();
-    errorBanner.style.display = "none";
+    errorBanner.addClass("struct-latex-hidden");
     return true;
   }
-  errorBanner.style.display = "block";
+  errorBanner.removeClass("struct-latex-hidden");
   errorBanner.setText(res.errors.join("; "));
   return false;
 }
@@ -158,8 +158,7 @@ function renderImportPanelBody(panel: HTMLElement, callbacks: InlinePanelCallbac
   });
   textarea.placeholder = t("panel.importPlaceholder");
 
-  const errEl = panel.createDiv({ cls: "struct-latex-modal-error" });
-  errEl.style.display = "none";
+  const errEl = panel.createDiv({ cls: "struct-latex-modal-error struct-latex-hidden" });
 
   const footer = panel.createDiv({ cls: "struct-latex-inline-panel-actions" });
   footer.createEl("button", { text: t("modal.cancel") }).addEventListener("click", callbacks.onClose);
@@ -168,12 +167,12 @@ function renderImportPanelBody(panel: HTMLElement, callbacks: InlinePanelCallbac
   importBtn.addEventListener("click", () => {
     void (async () => {
       try {
-        errEl.style.display = "none";
+        errEl.addClass("struct-latex-hidden");
         await callbacks.onImport(textarea.value);
         new Notice(t("modals.json.importedNotice"));
         callbacks.onClose();
       } catch (err) {
-        errEl.style.display = "block";
+        errEl.removeClass("struct-latex-hidden");
         errEl.setText((err as Error).message);
       }
     })();

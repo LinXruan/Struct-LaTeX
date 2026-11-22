@@ -24,7 +24,7 @@ function getOrderedRuleSiblings(listEl: HTMLElement, excludeRow: HTMLElement): H
   for (let i = 0; i < listEl.children.length; i++) {
     const child = listEl.children[i];
     if (
-      child instanceof HTMLElement &&
+      child.instanceOf(HTMLElement) &&
       child !== excludeRow &&
       child.classList.contains("struct-latex-rule-row") &&
       !child.classList.contains("struct-latex-rule-draft")
@@ -60,7 +60,8 @@ function movePlaceholderWithFlip(
     if (prevTop === undefined) continue;
     const delta = prevTop - sib.getBoundingClientRect().top;
     if (Math.abs(delta) > 0.5) {
-      sib.style.transition = "none";
+      sib.classList.remove("struct-latex-flip-animate");
+      sib.classList.add("struct-latex-flip-none");
       sib.style.transform = `translateY(${delta}px)`;
       moved.push({ el: sib, delta });
     }
@@ -69,7 +70,8 @@ function movePlaceholderWithFlip(
   if (moved.length === 0) return;
   void listEl.offsetHeight;
   for (const item of moved) {
-    item.el.style.transition = "transform 160ms cubic-bezier(0.2, 0, 0, 1)";
+    item.el.classList.remove("struct-latex-flip-none");
+    item.el.classList.add("struct-latex-flip-animate");
     item.el.style.transform = "";
   }
 }
@@ -81,7 +83,7 @@ function findAdjacentIds(
   let prevEl: Element | null = placeholder.previousElementSibling;
   while (prevEl) {
     if (
-      prevEl instanceof HTMLElement &&
+      prevEl.instanceOf(HTMLElement) &&
       prevEl !== excludeRow &&
       prevEl.classList.contains("struct-latex-rule-row") &&
       !prevEl.classList.contains("struct-latex-rule-draft") &&
@@ -95,7 +97,7 @@ function findAdjacentIds(
   let nextEl: Element | null = placeholder.nextElementSibling;
   while (nextEl) {
     if (
-      nextEl instanceof HTMLElement &&
+      nextEl.instanceOf(HTMLElement) &&
       nextEl !== excludeRow &&
       nextEl.classList.contains("struct-latex-rule-row") &&
       !nextEl.classList.contains("struct-latex-rule-draft") &&
@@ -107,8 +109,8 @@ function findAdjacentIds(
   }
 
   return {
-    afterId: prevEl instanceof HTMLElement ? prevEl.dataset.ruleId ?? null : null,
-    beforeId: nextEl instanceof HTMLElement ? nextEl.dataset.ruleId ?? null : null,
+    afterId: prevEl?.instanceOf(HTMLElement) ? prevEl.dataset.ruleId ?? null : null,
+    beforeId: nextEl?.instanceOf(HTMLElement) ? nextEl.dataset.ruleId ?? null : null,
   };
 }
 
@@ -191,7 +193,7 @@ export function attachPointerDragSort(
       placeholder.className = "struct-latex-drop-placeholder";
       placeholder.style.height = `${rowRect.height}px`;
       listEl.insertBefore(placeholder, row);
-      row.style.display = "none";
+      row.addClass("struct-latex-hidden");
       doc.body.classList.add("struct-latex-is-dragging");
 
       if (scrollContainer) {
@@ -232,7 +234,7 @@ export function attachPointerDragSort(
 
       const siblings = getOrderedRuleSiblings(listEl, row);
       for (const sib of siblings) {
-        sib.style.transition = "";
+        sib.classList.remove("struct-latex-flip-none", "struct-latex-flip-animate");
         sib.style.transform = "";
       }
 
@@ -242,7 +244,7 @@ export function attachPointerDragSort(
       }
       placeholder?.remove();
       placeholder = null;
-      row.style.display = "";
+      row.removeClass("struct-latex-hidden");
 
       if (commit && (adj.beforeId || adj.afterId)) {
         void onReorder(ruleId, adj.beforeId, adj.afterId);
