@@ -1,5 +1,6 @@
 import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
 import { getLocale, Locale, t } from "../i18n";
+import { TriggerCategory, TriggerRule } from "../input/triggerTypes";
 import { InputRule, PluginSettings } from "../input/types";
 import { renderRuleEditorView } from "./ruleEditorView";
 import { InlinePanelMode, renderInlineActionPanel } from "./ruleInlinePanels";
@@ -16,10 +17,13 @@ import {
 } from "./settingGeneralSection";
 import { RuleListController } from "./settingRuleList";
 import { createDraftRule, renderFilterToolbar, ToolbarHandle } from "./settingToolbar";
+import { renderTriggerRuleEditorView } from "./triggerRowAndEditor";
+import { TriggerStore } from "./triggerStore";
 
 export interface StructLatexSettingHost extends Plugin {
   settings: PluginSettings;
   ruleStore: RuleStore;
+  triggerStore: TriggerStore;
   saveSettings(): Promise<void>;
   syncLocale(): Locale;
   onLanguageUpdated?: () => Promise<void>;
@@ -139,6 +143,33 @@ export class StructLatexSettingTab extends PluginSettingTab {
     if (scroller) scroller.scrollTop = 0;
   }
 
+  private openTriggerEditor(
+    target: TriggerRule,
+    category: TriggerCategory,
+    isNew: boolean,
+    onSaved: (saved: TriggerRule, isNew: boolean) => Promise<void>
+  ): void {
+    if (!this.subPageEl || !this.editorViewEl) return;
+    const scroller = this.findScrollAncestor(this.containerEl);
+    this.savedScrollTop = scroller ? scroller.scrollTop : 0;
+
+    this.subPageEl.addClass("struct-latex-hidden");
+    this.editorViewEl.removeClass("struct-latex-hidden");
+    this.disposeEditor?.();
+    this.disposeEditor = renderTriggerRuleEditorView(this.editorViewEl, {
+      rule: target,
+      category,
+      parseAmbiguousBars: this.host.settings.parseAmbiguousBars,
+      isNew,
+      onSave: async (saved) => {
+        await onSaved(saved, isNew);
+        this.closeRuleEditor();
+      },
+      onCancel: () => this.closeRuleEditor(),
+    });
+    if (scroller) scroller.scrollTop = 0;
+  }
+
   private refreshAfterRulesMutation(): void {
     const rules = this.host.ruleStore.getRules();
     this.addRuleSetting?.setDesc(
@@ -223,7 +254,12 @@ export class StructLatexSettingTab extends PluginSettingTab {
     if (page === "input") {
       this.renderInputSubPage(container);
     } else if (page === "delete" || page === "jump") {
-      this.disposeSubPage = renderFeatureCategoryPage(container, page, this.host);
+      this.disposeSubPage = renderFeatureCategoryPage(
+        container,
+        page,
+        this.host,
+        (rule, category, isNew, onSaved) => this.openTriggerEditor(rule, category, isNew, onSaved)
+      );
     } else if (page === "special") {
       renderSpecialSettingsPage(container, this.host);
     } else {

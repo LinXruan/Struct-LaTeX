@@ -1,15 +1,25 @@
 import { isolateHistory } from "@codemirror/commands";
-import { EditorState, Extension } from "@codemirror/state";
+import { ChangeSpec, EditorState, Extension, Prec } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { buildRuleContext } from "../input/contextBuilder";
+import {
+  evaluateTriggerRules,
+  resolvePureStructuralJumpWithTrigger,
+} from "../input/triggerEngine";
+import { CompiledTriggerRule, TriggerJsErrorReporter } from "../input/triggerTypes";
 import { resolveStructuralJump } from "../parser/jumpResolver";
 import { createKeybindHijackExtension } from "./keybindHijack";
-import { getAnalyzedMathBlock, MathRegion } from "./mathRegion";
+import { AnalyzedMathBlock, getAnalyzedMathBlock, isInCodeOrFrontmatter, MathRegion } from "./mathRegion";
+
+export { resolvePureStructuralJumpWithTrigger } from "../input/triggerEngine";
 
 export interface SmartJumpOptions {
   isEnabled?: () => boolean;
   getKeybind?: () => string;
+  getTriggerRules?: () => readonly CompiledTriggerRule[];
   getParseAmbiguousBars?: () => boolean;
   isMac?: boolean;
+  onJsError?: TriggerJsErrorReporter;
 }
 
 type JumpAction =
@@ -34,7 +44,6 @@ function resolveMathBlockExit(state: EditorState, region: MathRegion): JumpActio
     return { kind: "insert", pos: exitPos, text: "\n", anchor: exitPos + 1 };
   }
 
-  // Inline math: skip existing horizontal space(s), otherwise insert a single space
   let afterSpace = exitPos;
   while (afterSpace < doc.length) {
     const ch = doc.sliceString(afterSpace, afterSpace + 1);
@@ -71,7 +80,7 @@ function dispatchJumpAction(view: EditorView, action: JumpAction): boolean {
   return true;
 }
 
-function handleSmartJump(view: EditorView, parseAmbiguousBars: boolean): boolean {
+export function executeSmartJump(view: EditorView, parseAmbiguousBars: boolean): boolean {
   const { state } = view;
   if (state.readOnly || view.composing) return false;
   if (state.selection.ranges.length > 1) return false;
@@ -99,12 +108,123 @@ function handleSmartJump(view: EditorView, parseAmbiguousBars: boolean): boolean
   return dispatchJumpAction(view, exitAction);
 }
 
+function tryDispatchTriggerJump(
+  view: EditorView,
+  analyzed: AnalyzedMathBlock,
+  pos: number,
+  docDeleteBefore: number,
+  docDeleteAfter: number,
+  parseAmbiguousBars: boolean
+): boolean {
+  const { state } = view;
+  if (docDeleteBefore === 0 && docDeleteAfter === 0) {
+    return executeSmartJump(view, parseAmbiguousBars);
+  }
+
+  const contentFrom = analyzed.region.contentFrom;
+  const contentTo = analyzed.region.contentTo;
+  const trigFrom = Math.max(contentFrom, pos - docDeleteBefore);
+  const trigTo = Math.min(contentTo, pos + docDeleteAfter);
+  const removedLen = trigTo - trigFrom;
+
+  const mathSource = state.doc.sliceString(contentFrom, contentTo);
+  const relTrigFrom = trigFrom - contentFrom;
+  const relTrigTo = trigTo - contentFrom;
+  const { targetCleanRelPos } = resolvePureStructuralJumpWithTrigger(
+    mathSource,
+    relTrigFrom,
+    relTrigTo,
+    parseAmbiguousBars
+  );
+
+  if (targetCleanRelPos !== null) {
+    view.dispatch({
+      changes: { from: trigFrom, to: trigTo, insert: "" },
+      selection: { anchor: contentFrom + targetCleanRelPos },
+      scrollIntoView: true,
+      annotations: [isolateHistory.of("full")],
+      userEvent: "struct-latex.jump",
+    });
+    return true;
+  }
+
+  const exitAction = resolveMathBlockExit(state, analyzed.region);
+  if (!exitAction) return false;
+
+  const changes: ChangeSpec[] = [{ from: trigFrom, to: trigTo, insert: "" }];
+  if (exitAction.kind === "insert") {
+    changes.push({ from: exitAction.pos, to: exitAction.pos, insert: exitAction.text });
+  }
+
+  view.dispatch({
+    changes,
+    selection: { anchor: exitAction.anchor - removedLen },
+    scrollIntoView: true,
+    annotations: [isolateHistory.of("full")],
+    userEvent: "struct-latex.jump",
+  });
+  return true;
+}
+
 export function createSmartJumpExtension(options: SmartJumpOptions = {}): Extension {
-  return createKeybindHijackExtension({
-    isEnabled: options.isEnabled ?? (() => true),
+  const isEnabled = options.isEnabled ?? (() => true);
+  const getBars = () => options.getParseAmbiguousBars?.() ?? true;
+
+  const keybindExt = createKeybindHijackExtension({
+    isEnabled,
     getKeybind: options.getKeybind ?? (() => "Tab"),
     defaultKeybind: "Tab",
     isMac: options.isMac,
-    run: (view) => handleSmartJump(view, options.getParseAmbiguousBars?.() ?? true),
+    run: (view) => executeSmartJump(view, getBars()),
   });
+
+  const inputTriggerExt = Prec.highest(
+    EditorView.inputHandler.of((view, from, to, text) => {
+      if (!isEnabled()) return false;
+      const compiled = options.getTriggerRules?.() ?? [];
+      if (compiled.length === 0) return false;
+
+      const { state } = view;
+      if (state.readOnly || view.composing) return false;
+      if (state.selection.ranges.length > 1) return false;
+      if (from !== to || text.length === 0 || text.length > 2) return false;
+      if (isInCodeOrFrontmatter(state, from)) return false;
+
+      const parseAmbiguousBars = getBars();
+      const analyzed = getAnalyzedMathBlock(state, from, { parseAmbiguousBars });
+      if (!analyzed) return false;
+
+      const ctx = buildRuleContext({
+        key: text,
+        before: state.doc.sliceString(analyzed.region.contentFrom, from),
+        after: state.doc.sliceString(from, analyzed.region.contentTo),
+        inMath: true,
+        inBlockMath: analyzed.region.isBlock,
+        inCode: false,
+        tree: analyzed.tree,
+        relPos: from - analyzed.region.contentFrom,
+      });
+
+      const matches = evaluateTriggerRules(compiled, ctx, options.onJsError);
+      for (const match of matches) {
+        const docDeleteBefore = Math.max(0, match.action.replaceLength - text.length);
+        const docDeleteAfter = Math.max(0, match.action.deleteAfter);
+        if (
+          tryDispatchTriggerJump(
+            view,
+            analyzed,
+            from,
+            docDeleteBefore,
+            docDeleteAfter,
+            parseAmbiguousBars
+          )
+        ) {
+          return true;
+        }
+      }
+      return false;
+    })
+  );
+
+  return [keybindExt, inputTriggerExt];
 }

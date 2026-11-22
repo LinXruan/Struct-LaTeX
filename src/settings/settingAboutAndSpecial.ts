@@ -29,11 +29,6 @@ export function renderSpecialSettingsPage(parent: HTMLElement, host: GeneralSett
         host.onSpecialSettingsChanged?.();
       })
     );
-
-  parent.createDiv({
-    cls: "struct-latex-hijack-note",
-    text: t("settings.special.parseAmbiguousBars.note"),
-  });
 }
 
 export function renderAboutPage(parent: HTMLElement, manifest: PluginManifest): void {

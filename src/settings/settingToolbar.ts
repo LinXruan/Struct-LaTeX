@@ -9,7 +9,7 @@ export interface FilterState {
 }
 
 export interface ToolbarHandle {
-  syncGroups: (rules: readonly InputRule[]) => void;
+  syncGroups: (rules: readonly { group: string }[]) => void;
   syncActivePanel: (mode: InlinePanelMode | null) => void;
 }
 
@@ -90,13 +90,14 @@ export function filterRules(rules: readonly InputRule[], filter: FilterState): I
 
 export function renderFilterToolbar(
   containerEl: HTMLElement,
-  rules: readonly InputRule[],
+  rules: readonly { group: string }[],
   filter: FilterState,
   onFilterChanged: () => void,
   onIoAction: {
     onExport: () => void;
     onImport: () => void;
     onReset: () => void;
+    labels?: { exportText: string; importText: string; resetText: string; textToggleText?: string };
   }
 ): ToolbarHandle {
   const toolbar = containerEl.createDiv({ cls: "struct-latex-toolbar" });
@@ -118,7 +119,7 @@ export function renderFilterToolbar(
   });
 
   const groupSelect = toolbar.createEl("select", { cls: "dropdown" });
-  const syncGroups = (nextRules: readonly InputRule[]) => {
+  const syncGroups = (nextRules: readonly { group: string }[]) => {
     const groups = Array.from(new Set(nextRules.map((r) => r.group)));
     groupSelect.empty();
     groupSelect.createEl("option", { value: "all", text: t("toolbar.allGroups") });
@@ -133,10 +134,11 @@ export function renderFilterToolbar(
   });
 
   const ioBar = containerEl.createDiv({ cls: "struct-latex-io-bar" });
+  const labels = onIoAction.labels;
   const ioButtons: Record<InlinePanelMode, HTMLButtonElement> = {
-    export: ioBar.createEl("button", { cls: "struct-latex-io-btn", text: t("toolbar.export") }),
-    import: ioBar.createEl("button", { cls: "struct-latex-io-btn", text: t("toolbar.import") }),
-    reset: ioBar.createEl("button", { cls: "struct-latex-io-btn mod-warning", text: t("toolbar.reset") }),
+    export: ioBar.createEl("button", { cls: "struct-latex-io-btn", text: labels?.exportText ?? t("toolbar.export") }),
+    import: ioBar.createEl("button", { cls: "struct-latex-io-btn", text: labels?.importText ?? t("toolbar.import") }),
+    reset: ioBar.createEl("button", { cls: "struct-latex-io-btn mod-warning", text: labels?.resetText ?? t("toolbar.reset") }),
   };
   ioButtons.export.addEventListener("click", onIoAction.onExport);
   ioButtons.import.addEventListener("click", onIoAction.onImport);
@@ -156,7 +158,7 @@ export function renderFilterToolbar(
   const typeButtons: Array<{ type: RuleType; label: string }> = [
     { type: "js", label: t("toolbar.toggleJs") },
     { type: "regex", label: t("toolbar.toggleRegex") },
-    { type: "text", label: t("toolbar.toggleText") },
+    { type: "text", label: labels?.textToggleText ?? t("toolbar.toggleText") },
   ];
 
   for (const item of typeButtons) {

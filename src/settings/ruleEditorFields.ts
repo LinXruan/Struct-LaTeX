@@ -1,6 +1,7 @@
 import { Platform, Setting } from "obsidian";
 import { t } from "../i18n";
 import { keyboardEventToCombo } from "../input/keybindUtils";
+import { TriggerRule } from "../input/triggerTypes";
 import { InputRule, RuleGuardOptions } from "../input/types";
 import { attachKeyRecorder } from "./ruleInlinePanels";
 
@@ -145,5 +146,50 @@ export function renderGuardsFields(
           draft.preview = v;
           onPreviewInvalidated();
         })
+    );
+}
+
+export function renderTriggerGuardsFields(
+  container: HTMLElement,
+  draft: TriggerRule,
+  onPreviewInvalidated: () => void
+): void {
+  const details = container.createEl("details", { cls: "struct-latex-guards-details" });
+  details.createEl("summary", { text: t("fields.guards.summary") });
+  if (!draft.guards) draft.guards = {};
+  const guards: RuleGuardOptions = draft.guards;
+
+  new Setting(details)
+    .setName(t("fields.guards.wordBoundary.name"))
+    .setDesc(t("fields.guards.wordBoundary.desc"))
+    .addToggle((tInput) =>
+      tInput.setValue(Boolean(guards.wordBoundary)).onChange((v) => {
+        guards.wordBoundary = v;
+        onPreviewInvalidated();
+      })
+    );
+  new Setting(details)
+    .setName(t("fields.guards.excludeText"))
+    .addToggle((tInput) =>
+      tInput.setValue(guards.excludeInTextMode ?? true).onChange((v) => {
+        guards.excludeInTextMode = v;
+        onPreviewInvalidated();
+      })
+    );
+  new Setting(details)
+    .setName(t("fields.guards.excludeCmd"))
+    .addToggle((tInput) =>
+      tInput.setValue(guards.excludeInCommand ?? true).onChange((v) => {
+        guards.excludeInCommand = v;
+        onPreviewInvalidated();
+      })
+    );
+  new Setting(details)
+    .setName(t("fields.guards.excludeEnv"))
+    .addToggle((tInput) =>
+      tInput.setValue(guards.excludeInEnvName ?? true).onChange((v) => {
+        guards.excludeInEnvName = v;
+        onPreviewInvalidated();
+      })
     );
 }

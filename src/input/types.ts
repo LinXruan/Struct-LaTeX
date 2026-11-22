@@ -67,6 +67,7 @@ export interface PluginSettings {
   smartJumpKey: string;
   outputDialect: OutputDialect;
   parseAmbiguousBars: boolean;
+  mobileToolbarInitialized: boolean;
 }
 
 export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
@@ -78,6 +79,7 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   smartJumpKey: "Tab",
   outputDialect: "latex",
   parseAmbiguousBars: true,
+  mobileToolbarInitialized: false,
 };
 
 export interface RuleAction {

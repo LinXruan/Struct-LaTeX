@@ -55,17 +55,6 @@ body.theme-dark .struct-latex-logo-brace {
   font-size: 12px;
 }
 
-.struct-latex-hijack-note {
-  margin-top: 10px;
-  padding: 10px 12px;
-  border-radius: var(--radius-s);
-  border-left: 3px solid var(--interactive-accent);
-  background: var(--background-secondary);
-  color: var(--text-muted);
-  font-size: 12.5px;
-  line-height: 1.5;
-}
-
 .struct-latex-toolbar {
   display: flex;
   flex-wrap: wrap;

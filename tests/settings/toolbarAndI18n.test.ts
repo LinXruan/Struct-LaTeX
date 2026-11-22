@@ -148,8 +148,9 @@ describe("I18n — Dictionary Parity, Obsidian Language Resolution & Localized M
       assert.equal(t("settings.nav.jump", undefined, "zh"), "光标跳转");
       assert.equal(t("settings.nav.special", undefined, "zh"), "特殊设置");
       assert.equal(t("settings.nav.about", undefined, "zh"), "关于");
-      assert.ok(t("settings.deleteKey.hijackNote", undefined, "zh").includes("按键输入劫持"));
-      assert.ok(t("settings.jumpKey.hijackNote", undefined, "en").includes("JavaScript"));
+      assert.equal(t("settings.keybind.name", undefined, "zh"), "按键绑定");
+      assert.equal(t("trigger.mobileToolbar.name", undefined, "zh"), "移动端工具栏");
+      assert.equal(t("trigger.addRule.name", undefined, "zh"), "输入触发规则");
 
       assert.equal(
         formatTriggerBadge({
