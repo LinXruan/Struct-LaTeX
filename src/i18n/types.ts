@@ -69,10 +69,6 @@ export interface I18nMessages {
   "draft.jsTemplate": string;
   "toolbar.searchPlaceholder": string;
   "toolbar.allGroups": string;
-  "toolbar.allTypes": string;
-  "toolbar.typeText": string;
-  "toolbar.typeRegex": string;
-  "toolbar.typeJs": string;
   "toolbar.export": string;
   "toolbar.import": string;
   "toolbar.reset": string;
@@ -88,9 +84,13 @@ export interface I18nMessages {
   "row.summarySample": string;
   "row.enabled": string;
   "row.disabled": string;
+  "row.editBtn": string;
   "row.editKeybindTitle": string;
   "row.editRuleTitle": string;
   "row.deleteRuleTitle": string;
+  "editor.back": string;
+  "panel.close": string;
+  "panel.importPlaceholder": string;
   "modal.newPrefix": string;
   "modal.editPrefix": string;
   "modal.title.text": string;

@@ -1,18 +1,14 @@
 import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
-import { getLocale, LanguageSetting, t } from "../i18n";
-import { InputRule, OutputDialect, PluginSettings } from "../input/types";
-import { cloneRule } from "../input/validation";
+import { getLocale, t } from "../i18n";
+import { InputRule, PluginSettings } from "../input/types";
 import { LazyMathPreviewManager } from "./mathPreview";
-import { RuleEditModal } from "./ruleEditModal";
-import { ConfirmResetModal, JsonTransferModal } from "./ruleModals";
+import { renderRuleEditorView } from "./ruleEditorView";
+import { InlinePanelMode, renderInlineActionPanel } from "./ruleInlinePanels";
 import { renderRuleRow, RuleRowCallbacks } from "./ruleRowRenderer";
 import { RuleStore } from "./ruleStore";
+import { renderAddRuleSetting, renderGeneralSettings } from "./settingGeneralSection";
 import {
-  createDefaultFilterState,
-  createDraftRule,
-  filterRules,
-  FilterState,
-  renderFilterToolbar,
+  createDefaultFilterState, createDraftRule, filterRules, FilterState, renderFilterToolbar, ToolbarHandle,
 } from "./settingToolbar";
 
 export interface StructLatexSettingHost extends Plugin {
@@ -26,7 +22,15 @@ export class StructLatexSettingTab extends PluginSettingTab {
   private readonly filter: FilterState = createDefaultFilterState();
   private pendingNewTextDraft: InputRule | null = null;
   private previewManager: LazyMathPreviewManager | null = null;
+  private mainViewEl: HTMLElement | null = null;
+  private editorViewEl: HTMLElement | null = null;
+  private inlinePanelEl: HTMLElement | null = null;
   private listContainer: HTMLElement | null = null;
+  private addRuleSetting: Setting | null = null;
+  private toolbarHandle: ToolbarHandle | null = null;
+  private activeInlinePanel: InlinePanelMode | null = null;
+  private disposeEditor: (() => void) | null = null;
+  private savedScrollTop = 0;
   private readonly rowCache = new Map<string, { sig: string; el: HTMLElement }>();
 
   constructor(app: App, private readonly host: StructLatexSettingHost) {
@@ -37,51 +41,141 @@ export class StructLatexSettingTab extends PluginSettingTab {
     return `${this.host.settings.outputDialect}:${getLocale()}:${isDraft ? 1 : 0}:${JSON.stringify(rule)}`;
   }
 
+  private findScrollAncestor(startEl: HTMLElement | null): HTMLElement | null {
+    const win = this.containerEl.ownerDocument.defaultView ?? window;
+    for (let cur = startEl; cur; cur = cur.parentElement) {
+      const overflowY = win.getComputedStyle(cur).overflowY;
+      if (overflowY === "auto" || overflowY === "scroll") return cur;
+    }
+    return null;
+  }
+
+  private resetTransientState(): void {
+    this.disposeEditor?.();
+    this.disposeEditor = null;
+    this.activeInlinePanel = null;
+    this.previewManager?.destroy();
+    this.previewManager = null;
+    this.rowCache.clear();
+  }
+
+  private closeInlinePanel(): void {
+    this.activeInlinePanel = null;
+    this.inlinePanelEl?.empty();
+    this.toolbarHandle?.syncActivePanel(null);
+  }
+
+  private toggleInlinePanel(mode: InlinePanelMode): void {
+    if (!this.inlinePanelEl) return;
+    if (this.activeInlinePanel === mode) {
+      this.closeInlinePanel();
+      return;
+    }
+    this.activeInlinePanel = mode;
+    this.toolbarHandle?.syncActivePanel(mode);
+    renderInlineActionPanel(this.inlinePanelEl, mode, {
+      getExportJson: () => this.host.ruleStore.exportJson(),
+      onImport: async (raw) => {
+        await this.host.ruleStore.importJson(raw);
+        this.refreshAfterRulesMutation();
+      },
+      onReset: async () => {
+        await this.host.ruleStore.resetToDefaults();
+        this.pendingNewTextDraft = null;
+        this.refreshAfterRulesMutation();
+      },
+      onClose: () => this.closeInlinePanel(),
+    });
+  }
+
+  private async upsertAndSaveRule(rule: InputRule, isNew: boolean): Promise<void> {
+    const next = [...this.host.ruleStore.getRules()];
+    if (isNew) {
+      this.pendingNewTextDraft = null;
+      next.unshift(rule);
+    } else {
+      const idx = next.findIndex((r) => r.id === rule.id);
+      if (idx >= 0) next[idx] = rule;
+    }
+    await this.host.ruleStore.save(next);
+  }
+
+  private closeRuleEditor(): void {
+    this.disposeEditor?.();
+    this.disposeEditor = null;
+    this.editorViewEl?.empty();
+    this.editorViewEl?.addClass("struct-latex-hidden");
+    this.mainViewEl?.removeClass("struct-latex-hidden");
+    const scroller = this.findScrollAncestor(this.containerEl);
+    if (scroller) scroller.scrollTop = this.savedScrollTop;
+  }
+
+  private openRuleEditor(target: InputRule, isNew: boolean): void {
+    if (!this.mainViewEl || !this.editorViewEl) return;
+    this.closeInlinePanel();
+    const scroller = this.findScrollAncestor(this.containerEl);
+    this.savedScrollTop = scroller ? scroller.scrollTop : 0;
+
+    this.mainViewEl.addClass("struct-latex-hidden");
+    this.editorViewEl.removeClass("struct-latex-hidden");
+    this.disposeEditor?.();
+    this.disposeEditor = renderRuleEditorView(this.editorViewEl, {
+      rule: target,
+      dialect: this.host.settings.outputDialect,
+      isNew,
+      onSave: async (saved) => {
+        await this.upsertAndSaveRule(saved, isNew);
+        this.closeRuleEditor();
+        this.refreshAfterRulesMutation();
+      },
+      onCancel: () => this.closeRuleEditor(),
+    });
+    if (scroller) scroller.scrollTop = 0;
+  }
+
+  private refreshAfterRulesMutation(): void {
+    const rules = this.host.ruleStore.getRules();
+    this.addRuleSetting?.setDesc(
+      t("settings.addRule.desc", { path: this.host.ruleStore.filePath, count: rules.length })
+    );
+    this.toolbarHandle?.syncGroups(rules);
+
+    const validIds = new Set(rules.map((r) => r.id));
+    if (this.pendingNewTextDraft) validIds.add(this.pendingNewTextDraft.id);
+    for (const id of this.rowCache.keys()) {
+      if (!validIds.has(id)) this.rowCache.delete(id);
+    }
+    this.renderRuleList();
+  }
+
+  private updateRowCacheSig(rule: InputRule): void {
+    const cached = this.rowCache.get(rule.id);
+    if (cached) cached.sig = this.getRowSignature(rule, false);
+  }
+
   private buildRowCallbacks(previewManager: LazyMathPreviewManager): RuleRowCallbacks {
     return {
       getDialect: () => this.host.settings.outputDialect,
       previewManager,
       onCommitRule: async (updated, isDraft) => {
-        const current = this.host.ruleStore.getRules().map((r) => cloneRule(r));
+        await this.upsertAndSaveRule(updated, isDraft);
         if (isDraft) {
-          this.pendingNewTextDraft = null;
-          current.unshift(updated);
+          this.refreshAfterRulesMutation();
         } else {
-          const idx = current.findIndex((r) => r.id === updated.id);
-          if (idx >= 0) current[idx] = updated;
-        }
-        await this.host.ruleStore.save(current);
-        if (isDraft) {
-          this.display();
-        } else {
-          const cached = this.rowCache.get(updated.id);
-          if (cached) cached.sig = this.getRowSignature(updated, false);
+          this.updateRowCacheSig(updated);
         }
       },
       onToggleEnabled: async (target, enabled) => {
-        const current = this.host.ruleStore.getRules().map((r) => cloneRule(r));
-        const found = current.find((r) => r.id === target.id);
-        if (!found) return;
-        found.enabled = enabled;
-        await this.host.ruleStore.save(current);
-        const cached = this.rowCache.get(found.id);
-        if (cached) cached.sig = this.getRowSignature(found, false);
+        const rules = this.host.ruleStore.getRules();
+        const idx = rules.findIndex((r) => r.id === target.id);
+        if (idx < 0) return;
+        const updated = { ...rules[idx], enabled };
+        const next = [...rules];
+        next[idx] = updated;
+        await this.host.ruleStore.save(next);
+        this.updateRowCacheSig(updated);
       },
-      onOpenEditModal: (target) => {
-        const isNew = this.pendingNewTextDraft?.id === target.id;
-        new RuleEditModal(this.app, target, this.host.settings.outputDialect, isNew, async (saved) => {
-          const current = this.host.ruleStore.getRules().map((r) => cloneRule(r));
-          if (isNew) {
-            this.pendingNewTextDraft = null;
-            current.unshift(saved);
-          } else {
-            const idx = current.findIndex((r) => r.id === saved.id);
-            if (idx >= 0) current[idx] = saved;
-          }
-          await this.host.ruleStore.save(current);
-          this.display();
-        }).open();
-      },
+      onOpenEditor: (target) => this.openRuleEditor(target, this.pendingNewTextDraft?.id === target.id),
       onDeleteRule: async (target, isDraft) => {
         if (isDraft) {
           this.pendingNewTextDraft = null;
@@ -90,22 +184,16 @@ export class StructLatexSettingTab extends PluginSettingTab {
         }
         this.rowCache.delete(target.id);
         await this.host.ruleStore.save(this.host.ruleStore.getRules().filter((r) => r.id !== target.id));
-        this.display();
+        this.refreshAfterRulesMutation();
       },
       onReorderRule: async (draggedId, beforeId, afterId) => {
-        const next = this.host.ruleStore.getRules().map((r) => cloneRule(r));
+        const next = [...this.host.ruleStore.getRules()];
         const fromIdx = next.findIndex((r) => r.id === draggedId);
         if (fromIdx < 0) return;
         const [moved] = next.splice(fromIdx, 1);
-
-        let targetIdx = fromIdx;
-        if (beforeId) {
-          const idx = next.findIndex((r) => r.id === beforeId);
-          if (idx >= 0) targetIdx = idx;
-        } else if (afterId) {
-          const idx = next.findIndex((r) => r.id === afterId);
-          if (idx >= 0) targetIdx = idx + 1;
-        }
+        const beforeIdx = beforeId ? next.findIndex((r) => r.id === beforeId) : -1;
+        const afterIdx = !beforeId && afterId ? next.findIndex((r) => r.id === afterId) : -1;
+        const targetIdx = beforeIdx >= 0 ? beforeIdx : afterIdx >= 0 ? afterIdx + 1 : fromIdx;
         if (targetIdx === fromIdx) return;
         next.splice(targetIdx, 0, moved);
         await this.host.ruleStore.save(next);
@@ -121,16 +209,11 @@ export class StructLatexSettingTab extends PluginSettingTab {
     if (!this.previewManager) {
       this.previewManager = new LazyMathPreviewManager(container);
     }
-    const previewManager = this.previewManager;
-
     const filtered = filterRules(this.host.ruleStore.getRules(), this.filter);
-    const items: Array<{ rule: InputRule; isDraft: boolean }> = [];
-    if (this.pendingNewTextDraft) {
-      items.push({ rule: this.pendingNewTextDraft, isDraft: true });
-    }
-    for (const r of filtered) {
-      items.push({ rule: r, isDraft: false });
-    }
+    const items = [
+      ...(this.pendingNewTextDraft ? [{ rule: this.pendingNewTextDraft, isDraft: true }] : []),
+      ...filtered.map((rule) => ({ rule, isDraft: false })),
+    ];
 
     if (items.length === 0) {
       container.replaceChildren();
@@ -138,7 +221,7 @@ export class StructLatexSettingTab extends PluginSettingTab {
       return;
     }
 
-    const callbacks = this.buildRowCallbacks(previewManager);
+    const callbacks = this.buildRowCallbacks(this.previewManager);
     const doc = container.ownerDocument;
     const fragment = doc.createDocumentFragment();
     const scratch = doc.createElement("div");
@@ -154,147 +237,57 @@ export class StructLatexSettingTab extends PluginSettingTab {
         fragment.appendChild(rowEl);
       }
     }
-
     container.replaceChildren(fragment);
-  }
-
-  private openNewModal(type: "regex" | "js"): void {
-    const draft = createDraftRule(type);
-    new RuleEditModal(this.app, draft, this.host.settings.outputDialect, true, async (saved) => {
-      const current = [saved, ...this.host.ruleStore.getRules().map((r) => cloneRule(r))];
-      await this.host.ruleStore.save(current);
-      this.display();
-    }).open();
   }
 
   display(): void {
     const { containerEl } = this;
-    this.previewManager?.destroy();
-    this.previewManager = null;
-    this.rowCache.clear();
+    this.resetTransientState();
     containerEl.empty();
-    containerEl.createEl("h2", { text: t("settings.title") });
 
-    new Setting(containerEl)
-      .setName(t("settings.language.name"))
-      .setDesc(t("settings.language.desc"))
-      .addDropdown((dd) =>
-        dd
-          .addOption("auto", t("settings.language.auto"))
-          .addOption("zh", t("settings.language.zh"))
-          .addOption("en", t("settings.language.en"))
-          .setValue(this.host.settings.language)
-          .onChange(async (v) => {
-            this.host.settings.language = v as LanguageSetting;
-            await this.host.saveSettings();
-            this.host.syncLocale();
-            this.display();
-          })
-      );
+    this.mainViewEl = containerEl.createDiv({ cls: "struct-latex-main-view" });
+    this.editorViewEl = containerEl.createDiv({ cls: "struct-latex-hidden" });
 
-    new Setting(containerEl)
-      .setName(t("settings.smartInput.name"))
-      .setDesc(t("settings.smartInput.desc"))
-      .addToggle((tToggle) =>
-        tToggle.setValue(this.host.settings.smartInputEnabled).onChange(async (v) => {
-          this.host.settings.smartInputEnabled = v;
-          await this.host.saveSettings();
-        })
-      );
-
-    new Setting(containerEl)
-      .setName(t("settings.smartBackspace.name"))
-      .setDesc(t("settings.smartBackspace.desc"))
-      .addToggle((tToggle) =>
-        tToggle.setValue(this.host.settings.smartBackspaceEnabled).onChange(async (v) => {
-          this.host.settings.smartBackspaceEnabled = v;
-          await this.host.saveSettings();
-        })
-      );
-
-    new Setting(containerEl)
-      .setName(t("settings.smartJump.name"))
-      .setDesc(t("settings.smartJump.desc"))
-      .addToggle((tToggle) =>
-        tToggle.setValue(this.host.settings.smartJumpEnabled).onChange(async (v) => {
-          this.host.settings.smartJumpEnabled = v;
-          await this.host.saveSettings();
-        })
-      );
-
-    new Setting(containerEl)
-      .setName(t("settings.dialect.name"))
-      .setDesc(t("settings.dialect.desc"))
-      .addDropdown((dd) =>
-        dd
-          .addOption("latex", t("settings.dialect.latex"))
-          .addOption("unicode", t("settings.dialect.unicode"))
-          .addOption("raw", t("settings.dialect.raw"))
-          .setValue(this.host.settings.outputDialect)
-          .onChange(async (v) => {
-            this.host.settings.outputDialect = v as OutputDialect;
-            await this.host.saveSettings();
-            this.previewManager?.destroy();
-            this.previewManager = null;
-            this.rowCache.clear();
-            this.renderRuleList();
-          })
-      );
+    this.mainViewEl.createEl("h2", { text: t("settings.title") });
+    renderGeneralSettings(this.mainViewEl, this.host, {
+      onLanguageChanged: () => this.display(),
+      onDialectChanged: () => {
+        this.previewManager?.destroy();
+        this.previewManager = null;
+        this.rowCache.clear();
+        this.renderRuleList();
+      },
+    });
 
     const loadErr = this.host.ruleStore.getLoadError();
     if (loadErr) {
-      containerEl.createDiv({
-        cls: "struct-latex-modal-error",
-        text: t("settings.loadError", { err: loadErr }),
-      });
+      this.mainViewEl.createDiv({ cls: "struct-latex-modal-error", text: t("settings.loadError", { err: loadErr }) });
     }
 
-    new Setting(containerEl)
-      .setName(t("settings.addRule.name"))
-      .setDesc(
-        t("settings.addRule.desc", {
-          path: this.host.ruleStore.filePath,
-          count: this.host.ruleStore.getRules().length,
-        })
-      )
-      .addButton((b) =>
-        b.setButtonText(t("settings.addText")).onClick(() => {
-          this.pendingNewTextDraft = createDraftRule("text");
-          this.renderRuleList();
-        })
-      )
-      .addButton((b) => b.setButtonText(t("settings.addRegex")).onClick(() => this.openNewModal("regex")))
-      .addButton((b) => b.setButtonText(t("settings.addJs")).onClick(() => this.openNewModal("js")));
+    const rules = this.host.ruleStore.getRules();
+    this.addRuleSetting = renderAddRuleSetting(this.mainViewEl, this.host.ruleStore.filePath, rules.length, {
+      onAddText: () => {
+        this.closeInlinePanel();
+        this.pendingNewTextDraft = createDraftRule("text");
+        this.renderRuleList();
+      },
+      onAddRegex: () => this.openRuleEditor(createDraftRule("regex"), true),
+      onAddJs: () => this.openRuleEditor(createDraftRule("js"), true),
+    });
 
-    renderFilterToolbar(
-      containerEl,
-      this.host.ruleStore.getRules(),
-      this.filter,
-      () => this.renderRuleList(),
-      {
-        onExport: () => new JsonTransferModal(this.app, "export", this.host.ruleStore.exportJson()).open(),
-        onImport: () =>
-          new JsonTransferModal(this.app, "import", "", async (raw) => {
-            await this.host.ruleStore.importJson(raw);
-            this.display();
-          }).open(),
-        onReset: () =>
-          new ConfirmResetModal(this.app, async () => {
-            await this.host.ruleStore.resetToDefaults();
-            this.pendingNewTextDraft = null;
-            this.display();
-          }).open(),
-      }
-    );
+    this.toolbarHandle = renderFilterToolbar(this.mainViewEl, rules, this.filter, () => this.renderRuleList(), {
+      onExport: () => this.toggleInlinePanel("export"),
+      onImport: () => this.toggleInlinePanel("import"),
+      onReset: () => this.toggleInlinePanel("reset"),
+    });
 
-    this.listContainer = containerEl.createDiv({ cls: "struct-latex-rule-list" });
+    this.inlinePanelEl = this.mainViewEl.createDiv();
+    this.listContainer = this.mainViewEl.createDiv({ cls: "struct-latex-rule-list" });
     this.renderRuleList();
   }
 
   hide(): void {
-    this.previewManager?.destroy();
-    this.previewManager = null;
-    this.rowCache.clear();
+    this.resetTransientState();
     this.pendingNewTextDraft = null;
   }
 }

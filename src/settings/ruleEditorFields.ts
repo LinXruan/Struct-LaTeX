@@ -2,11 +2,15 @@ import { Platform, Setting } from "obsidian";
 import { t } from "../i18n";
 import { keyboardEventToCombo } from "../input/keybindUtils";
 import { InputRule, RuleGuardOptions } from "../input/types";
-import { attachKeyRecorder } from "./ruleModals";
+import { attachKeyRecorder } from "./ruleInlinePanels";
 
-export function renderKeybindFields(container: HTMLElement, draft: InputRule): void {
+export function renderKeybindFields(container: HTMLElement, draft: InputRule): () => void {
   container.empty();
-  if (draft.triggerMode === "auto") return;
+  if (draft.triggerMode === "auto") {
+    return () => {};
+  }
+
+  const disposers: Array<() => void> = [];
 
   if (draft.triggerMode === "confirm") {
     let inputRef: HTMLInputElement | null = null;
@@ -22,17 +26,21 @@ export function renderKeybindFields(container: HTMLElement, draft: InputRule): v
       });
 
     const recBtn = setting.controlEl.createEl("button", { text: t("fields.recordKey") });
-    attachKeyRecorder(
-      recBtn,
-      Platform.isMacOS,
-      (combo) => {
-        draft.confirmKey = combo;
-        if (inputRef) inputRef.value = combo;
-      },
-      keyboardEventToCombo,
-      false
+    disposers.push(
+      attachKeyRecorder(
+        recBtn,
+        Platform.isMacOS,
+        (combo) => {
+          draft.confirmKey = combo;
+          if (inputRef) inputRef.value = combo;
+        },
+        keyboardEventToCombo,
+        false
+      )
     );
-    return;
+    return () => {
+      for (const dispose of disposers) dispose();
+    };
   }
 
   let hkInput: HTMLInputElement | null = null;
@@ -48,27 +56,35 @@ export function renderKeybindFields(container: HTMLElement, draft: InputRule): v
     });
 
   const btn1 = setting.controlEl.createEl("button", { text: t("fields.recordSingle") });
-  attachKeyRecorder(
-    btn1,
-    Platform.isMacOS,
-    (combo) => {
-      draft.hotkey = combo;
-      if (hkInput) hkInput.value = combo;
-    },
-    keyboardEventToCombo,
-    false
+  disposers.push(
+    attachKeyRecorder(
+      btn1,
+      Platform.isMacOS,
+      (combo) => {
+        draft.hotkey = combo;
+        if (hkInput) hkInput.value = combo;
+      },
+      keyboardEventToCombo,
+      false
+    )
   );
   const btn2 = setting.controlEl.createEl("button", { text: t("fields.recordChord") });
-  attachKeyRecorder(
-    btn2,
-    Platform.isMacOS,
-    (chord) => {
-      draft.hotkey = chord;
-      if (hkInput) hkInput.value = chord;
-    },
-    keyboardEventToCombo,
-    true
+  disposers.push(
+    attachKeyRecorder(
+      btn2,
+      Platform.isMacOS,
+      (chord) => {
+        draft.hotkey = chord;
+        if (hkInput) hkInput.value = chord;
+      },
+      keyboardEventToCombo,
+      true
+    )
   );
+
+  return () => {
+    for (const dispose of disposers) dispose();
+  };
 }
 
 export function renderGuardsFields(

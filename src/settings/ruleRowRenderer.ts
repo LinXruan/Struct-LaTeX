@@ -12,7 +12,7 @@ export interface RuleRowCallbacks {
   previewManager: LazyMathPreviewManager;
   onCommitRule: (rule: InputRule, isNewDraft: boolean) => Promise<void>;
   onToggleEnabled: (rule: InputRule, enabled: boolean) => Promise<void>;
-  onOpenEditModal: (rule: InputRule) => void;
+  onOpenEditor: (rule: InputRule) => void;
   onDeleteRule: (rule: InputRule, isNewDraft: boolean) => Promise<void>;
   onReorderRule: ReorderCallback;
 }
@@ -171,12 +171,14 @@ export function renderRuleRow(
     }
   });
 
-  const editBtn = actions.createEl("button", { cls: "clickable-icon struct-latex-row-btn" });
-  setIcon(editBtn, localDraft.type === "text" ? "sliders-horizontal" : localDraft.type === "regex" ? "pencil" : "code-2");
+  const editBtn = actions.createEl("button", {
+    cls: "struct-latex-edit-btn",
+    text: t("row.editBtn"),
+  });
   const editLabel = localDraft.type === "text" ? t("row.editKeybindTitle") : t("row.editRuleTitle");
   editBtn.setAttr("aria-label", editLabel);
   editBtn.setAttr("title", editLabel);
-  editBtn.addEventListener("click", () => callbacks.onOpenEditModal(localDraft));
+  editBtn.addEventListener("click", () => callbacks.onOpenEditor(localDraft));
 
   const delBtn = actions.createEl("button", { cls: "clickable-icon struct-latex-row-btn struct-latex-del-btn" });
   setIcon(delBtn, "trash-2");

@@ -1,18 +1,22 @@
 import { t } from "../i18n";
 import { InputRule, RuleType } from "../input/types";
+import type { InlinePanelMode } from "./ruleInlinePanels";
 
 export interface FilterState {
   searchQuery: string;
   groupFilter: string;
-  typeFilter: "all" | RuleType;
   enabledTypes: Set<RuleType>;
+}
+
+export interface ToolbarHandle {
+  syncGroups: (rules: readonly InputRule[]) => void;
+  syncActivePanel: (mode: InlinePanelMode | null) => void;
 }
 
 export function createDefaultFilterState(): FilterState {
   return {
     searchQuery: "",
     groupFilter: "all",
-    typeFilter: "all",
     enabledTypes: new Set<RuleType>(["js", "regex", "text"]),
   };
 }
@@ -68,7 +72,6 @@ export function filterRules(rules: readonly InputRule[], filter: FilterState): I
   for (const r of rules) {
     if (!filter.enabledTypes.has(r.type)) continue;
     if (filter.groupFilter !== "all" && r.group !== filter.groupFilter) continue;
-    if (filter.typeFilter !== "all" && r.type !== filter.typeFilter) continue;
     if (query) {
       const hay = [
         r.name,
@@ -95,7 +98,7 @@ export function renderFilterToolbar(
     onImport: () => void;
     onReset: () => void;
   }
-): void {
+): ToolbarHandle {
   const toolbar = containerEl.createDiv({ cls: "struct-latex-toolbar" });
   const searchInput = toolbar.createEl("input", {
     type: "search",
@@ -114,34 +117,40 @@ export function renderFilterToolbar(
     }, 120);
   });
 
-  const groups = Array.from(new Set(rules.map((r) => r.group)));
   const groupSelect = toolbar.createEl("select", { cls: "dropdown" });
-  groupSelect.createEl("option", { value: "all", text: t("toolbar.allGroups") });
-  for (const g of groups) groupSelect.createEl("option", { value: g, text: g });
-  groupSelect.value = groups.includes(filter.groupFilter) ? filter.groupFilter : "all";
-  filter.groupFilter = groupSelect.value;
+  const syncGroups = (nextRules: readonly InputRule[]) => {
+    const groups = Array.from(new Set(nextRules.map((r) => r.group)));
+    groupSelect.empty();
+    groupSelect.createEl("option", { value: "all", text: t("toolbar.allGroups") });
+    for (const g of groups) groupSelect.createEl("option", { value: g, text: g });
+    filter.groupFilter = groups.includes(filter.groupFilter) ? filter.groupFilter : "all";
+    groupSelect.value = filter.groupFilter;
+  };
+  syncGroups(rules);
   groupSelect.addEventListener("change", () => {
     filter.groupFilter = groupSelect.value;
     onFilterChanged();
   });
 
-  const typeSelect = toolbar.createEl("select", { cls: "dropdown" });
-  typeSelect.createEl("option", { value: "all", text: t("toolbar.allTypes") });
-  typeSelect.createEl("option", { value: "text", text: t("toolbar.typeText") });
-  typeSelect.createEl("option", { value: "regex", text: t("toolbar.typeRegex") });
-  typeSelect.createEl("option", { value: "js", text: t("toolbar.typeJs") });
-  typeSelect.value = filter.typeFilter;
-  typeSelect.addEventListener("change", () => {
-    filter.typeFilter = typeSelect.value as "all" | RuleType;
-    onFilterChanged();
-  });
-
   const ioBar = containerEl.createDiv({ cls: "struct-latex-io-bar" });
-  ioBar.createEl("button", { text: t("toolbar.export") }).addEventListener("click", onIoAction.onExport);
-  ioBar.createEl("button", { text: t("toolbar.import") }).addEventListener("click", onIoAction.onImport);
-  ioBar
-    .createEl("button", { cls: "mod-warning", text: t("toolbar.reset") })
-    .addEventListener("click", onIoAction.onReset);
+  const ioButtons: Record<InlinePanelMode, HTMLButtonElement> = {
+    export: ioBar.createEl("button", { cls: "struct-latex-io-btn", text: t("toolbar.export") }),
+    import: ioBar.createEl("button", { cls: "struct-latex-io-btn", text: t("toolbar.import") }),
+    reset: ioBar.createEl("button", { cls: "struct-latex-io-btn mod-warning", text: t("toolbar.reset") }),
+  };
+  ioButtons.export.addEventListener("click", onIoAction.onExport);
+  ioButtons.import.addEventListener("click", onIoAction.onImport);
+  ioButtons.reset.addEventListener("click", onIoAction.onReset);
+
+  const syncActivePanel = (activeMode: InlinePanelMode | null) => {
+    for (const mode of ["export", "import", "reset"] as const) {
+      const btn = ioButtons[mode];
+      const active = mode === activeMode;
+      btn.toggleClass("is-active", active);
+      btn.setAttr("aria-expanded", active ? "true" : "false");
+    }
+  };
+  syncActivePanel(null);
 
   const toggleGroup = ioBar.createDiv({ cls: "struct-latex-type-filter-group" });
   const typeButtons: Array<{ type: RuleType; label: string }> = [
@@ -171,4 +180,6 @@ export function renderFilterToolbar(
       onFilterChanged();
     });
   }
+
+  return { syncGroups, syncActivePanel };
 }

@@ -46,8 +46,8 @@ const SAMPLE_RULES: InputRule[] = [
   },
 ];
 
-describe("Settings Toolbar — Compound Type Filter", () => {
-  it("supports combining type dropdown with multi-select JS/Regex/Text toggle buttons", () => {
+describe("Settings Toolbar — Multi-Select Type Filter", () => {
+  it("filters rules via multi-select JS/Regex/Text toggle buttons, group, and search", () => {
     const filter = createDefaultFilterState();
     assert.equal(filterRules(SAMPLE_RULES, filter).length, 3);
 
@@ -58,24 +58,21 @@ describe("Settings Toolbar — Compound Type Filter", () => {
       ["r-1", "j-1"]
     );
 
-    // Dropdown narrows further to regex
-    filter.typeFilter = "regex";
+    // Combine with group filter
+    filter.groupFilter = "字母与字体";
     assert.deepEqual(
       filterRules(SAMPLE_RULES, filter).map((r) => r.id),
       ["r-1"]
     );
 
-    // Conflict between dropdown (regex) and toggle (regex off) yields 0
-    filter.enabledTypes.delete("regex");
-    assert.equal(filterRules(SAMPLE_RULES, filter).length, 0);
-
-    // All three toggles off -> yields 0 rules regardless of dropdown
-    filter.typeFilter = "all";
+    // Reset group and turn all three toggles off -> yields 0 rules
+    filter.groupFilter = "all";
     filter.enabledTypes.clear();
     assert.equal(filterRules(SAMPLE_RULES, filter).length, 0);
 
-    // Re-enable single type
+    // Re-enable single type with search query
     filter.enabledTypes = new Set<RuleType>(["text"]);
+    filter.searchQuery = ";a";
     assert.deepEqual(
       filterRules(SAMPLE_RULES, filter).map((r) => r.id),
       ["t-1"]
@@ -143,6 +140,9 @@ describe("I18n — Dictionary Parity, Obsidian Language Resolution & Localized M
         "latex"
       );
       assert.equal(jsNoSample.rawOutput, "(No example input)");
+
+      assert.equal(t("row.editBtn", undefined, "zh"), "编辑");
+      assert.equal(t("row.editBtn", undefined, "en"), "Edit");
 
       assert.equal(
         formatTriggerBadge({
