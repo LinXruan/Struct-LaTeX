@@ -15,7 +15,7 @@ import {
   emitDegradedAtoms,
 } from "./objectFactory";
 import { TokenKind, tokenizeMath } from "./tokenizer";
-import { BracketObject, LatexObject, MathTree } from "./types";
+import { BracketObject, LatexObject, MathParseOptions, MathTree } from "./types";
 
 const DELIMITER_TOKEN_KINDS: ReadonlySet<TokenKind> = new Set([
   "left_delim",
@@ -146,9 +146,9 @@ function buildRange(
   return result;
 }
 
-export function buildMathTree(source: string): MathTree {
+export function buildMathTree(source: string, options?: MathParseOptions): MathTree {
   const tokens = tokenizeMath(source);
-  const matches = matchDelimiters(tokens);
+  const { matches, oddBarSpans } = matchDelimiters(tokens, source, options);
   const ctx: BuildContext = {
     source,
     tokens,
@@ -157,5 +157,5 @@ export function buildMathTree(source: string): MathTree {
     nextId: 1,
   };
   const roots = buildRange(ctx, 0, tokens.length, undefined, false);
-  return { source, roots, allObjects: ctx.allObjects };
+  return { source, roots, allObjects: ctx.allObjects, oddBarSpans };
 }

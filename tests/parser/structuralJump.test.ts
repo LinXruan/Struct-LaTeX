@@ -171,6 +171,44 @@ describe("Structural Jump — Unified Newlines, Multiline Envs & Block Exit", ()
     expectJump("\\text{a b▮}", "\\text{a b}▮");
   });
 
+  it("steps flatly across same-level even `|` and `∥` brackets and degrades odd bars", () => {
+    expectJumpSequence("▮(|a|+|b|+|c|)", [
+      "(▮|a|+|b|+|c|)",
+      "(|▮a|+|b|+|c|)",
+      "(|a▮|+|b|+|c|)",
+      "(|a|▮+|b|+|c|)",
+      "(|a|+▮|b|+|c|)",
+      "(|a|+|▮b|+|c|)",
+      "(|a|+|b▮|+|c|)",
+      "(|a|+|b|▮+|c|)",
+      "(|a|+|b|+▮|c|)",
+      "(|a|+|b|+|▮c|)",
+      "(|a|+|b|+|c▮|)",
+      "(|a|+|b|+|c|▮)",
+      "(|a|+|b|+|c|)▮",
+    ]);
+
+    expectJumpSequence("▮∥a∥+∥b∥", [
+      "∥▮a∥+∥b∥",
+      "∥a▮∥+∥b∥",
+      "∥a∥▮+∥b∥",
+      "∥a∥+▮∥b∥",
+      "∥a∥+∥▮b∥",
+      "∥a∥+∥b▮∥",
+      "∥a∥+∥b∥▮",
+    ]);
+
+    // Odd count: `|` degrades to plain atoms (no bracket opening/closing segment)
+    expectJumpSequence("▮|a|+|b", [
+      "|▮a|+|b",
+      "|a▮|+|b",
+      "|a|▮+|b",
+      "|a|+▮|b",
+      "|a|+|▮b",
+      "|a|+|b▮",
+    ]);
+  });
+
   it("signals math-block exit when cursor is at or past the last entity core", () => {
     expectExit("▮");
     expectExit("   ▮   ");

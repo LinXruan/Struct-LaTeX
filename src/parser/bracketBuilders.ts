@@ -1,13 +1,12 @@
 import {
   COMMAND_SIGNATURES,
-  ENV_MANDATORY_HEADER_ARGS,
-  ENV_OPTIONAL_HEADER_ARGS,
   POSTFIX_MODIFIER_COMMANDS,
 } from "./commandTable";
 import {
   buildBracketTriggers,
   BuildContext,
   createWord,
+  resolveEnvHeaderEndIdx,
   skipWhitespaceTokens,
 } from "./objectFactory";
 import { BracketObject, BracketSubtype, LatexObject, Slot } from "./types";
@@ -102,37 +101,13 @@ export function buildEnvBracket(
   const openTok = ctx.tokens[openIdx];
   const closeTok = ctx.tokens[closeIdx];
   const envName = openTok.envName ?? "";
-  let headerEndIdx = openIdx + 1;
-
-  if (ENV_OPTIONAL_HEADER_ARGS.has(envName)) {
-    const peek = skipWhitespaceTokens(ctx.tokens, headerEndIdx, closeIdx);
-    const optClose = ctx.matches.get(peek);
-    if (
-      peek < closeIdx &&
-      ctx.tokens[peek].kind === "bracket_open" &&
-      optClose !== undefined &&
-      optClose < closeIdx &&
-      ctx.tokens[optClose].kind === "bracket_close"
-    ) {
-      const argText = ctx.source.slice(ctx.tokens[peek].to, ctx.tokens[optClose].from).trim();
-      if (argText === "t" || argText === "b" || argText === "c") {
-        headerEndIdx = optClose + 1;
-      }
-    }
-  }
-
-  if (ENV_MANDATORY_HEADER_ARGS.has(envName)) {
-    const peek = skipWhitespaceTokens(ctx.tokens, headerEndIdx, closeIdx);
-    const argClose = ctx.matches.get(peek);
-    if (
-      peek < closeIdx &&
-      ctx.tokens[peek].kind === "brace_open" &&
-      argClose !== undefined &&
-      argClose < closeIdx
-    ) {
-      headerEndIdx = argClose + 1;
-    }
-  }
+  const headerEndIdx = resolveEnvHeaderEndIdx(
+    ctx.source,
+    ctx.tokens,
+    ctx.matches,
+    openIdx,
+    closeIdx
+  );
 
   const openCoreTo = headerEndIdx > openIdx + 1 ? ctx.tokens[headerEndIdx - 1].to : openTok.to;
   const draft = createSlotDraft(ctx, openTok.from, openCoreTo, headerEndIdx, closeIdx, false);

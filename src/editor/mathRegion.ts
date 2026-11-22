@@ -3,7 +3,7 @@ import { EditorState, Text } from "@codemirror/state";
 import { SyntaxNode } from "@lezer/common";
 import { buildMathTree } from "../parser/builder";
 import { collectJumpSegments } from "../parser/jumpResolver";
-import { JumpSegment, MathTree } from "../parser/types";
+import { JumpSegment, MathParseOptions, MathTree } from "../parser/types";
 
 export const MAX_MATH_BLOCK_CHARS = 10_000;
 export const MAX_MATH_BLOCK_LINES = 200;
@@ -23,13 +23,12 @@ export interface AnalyzedMathBlock {
   jumpSegments: JumpSegment[];
 }
 
-interface CachedEntry {
-  contentFrom: number;
-  contentTo: number;
-  analyzed: AnalyzedMathBlock;
+interface DocCacheEntry {
+  parseAmbiguousBars: boolean;
+  blocks: Map<string, AnalyzedMathBlock>;
 }
 
-const docCache = new WeakMap<Text, CachedEntry>();
+const docCache = new WeakMap<Text, DocCacheEntry>();
 
 function hasNameFragment(node: SyntaxNode | null, fragment: string): boolean {
   let cur = node;
@@ -60,15 +59,15 @@ export function isInCodeOrFrontmatter(state: EditorState, pos: number): boolean 
   return isInCodeContext(state, pos) || isInFrontmatterContext(state, pos);
 }
 
-function isMathBeginName(name: string): boolean {
+export function isMathBeginName(name: string): boolean {
   return name.includes("formatting-math-begin");
 }
 
-function isMathEndName(name: string): boolean {
+export function isMathEndName(name: string): boolean {
   return name.includes("formatting-math-end");
 }
 
-function isMathTokenName(name: string): boolean {
+export function isMathTokenName(name: string): boolean {
   return name.includes("math") && !name.includes("code");
 }
 
@@ -156,6 +155,33 @@ export function findEmptyMathBlockDeleteSpan(
   return null;
 }
 
+export function finalizeMathRegion(
+  doc: Text,
+  beginFrom: number,
+  beginTo: number,
+  endFrom: number,
+  endTo: number,
+  fallbackEnd: number
+): MathRegion | null {
+  if (beginFrom === -1 || beginTo === -1) return null;
+
+  const delimText = doc.sliceString(beginFrom, beginTo);
+  const isBlock = delimText === "$$" || delimText === "\\[";
+  const isClosed = endFrom !== -1 && endTo !== -1;
+
+  const contentFrom = beginTo;
+  const contentTo = isClosed ? endFrom : Math.min(doc.length, fallbackEnd);
+  const blockTo = isClosed ? endTo : contentTo;
+
+  if (contentTo < contentFrom || contentTo - contentFrom > MAX_MATH_BLOCK_CHARS) return null;
+
+  const startLine = doc.lineAt(contentFrom).number;
+  const endLine = doc.lineAt(contentTo).number;
+  if (endLine - startLine > MAX_MATH_BLOCK_LINES) return null;
+
+  return { blockFrom: beginFrom, blockTo, contentFrom, contentTo, isBlock, isClosed };
+}
+
 /**
  * Locates the single enclosing math block around `pos` using CM6 `syntaxTree(state)`.
  * Adapts to Obsidian HyperMD's flat token stream with a strict char/line fuse.
@@ -192,10 +218,7 @@ export function findMathRegion(state: EditorState, pos: number): MathRegion | nu
         if (isMathBeginName(name)) {
           beginFrom = node.from;
           beginTo = node.to;
-        } else if (isMathEndName(name)) {
-          beginFrom = -1;
-          beginTo = -1;
-        } else if (!isMathTokenName(name)) {
+        } else if (isMathEndName(name) || !isMathTokenName(name)) {
           beginFrom = -1;
           beginTo = -1;
         }
@@ -210,11 +233,7 @@ export function findMathRegion(state: EditorState, pos: number): MathRegion | nu
           sawEndAfterPos = true;
           return false;
         }
-        if (isMathBeginName(name)) {
-          abortedAfterPos = true;
-          return false;
-        }
-        if (!isMathTokenName(name)) {
+        if (isMathBeginName(name) || !isMathTokenName(name)) {
           abortedAfterPos = true;
           return false;
         }
@@ -222,60 +241,45 @@ export function findMathRegion(state: EditorState, pos: number): MathRegion | nu
     },
   });
 
-  if (beginFrom === -1 || beginTo === -1) return null;
-
-  const delimText = doc.sliceString(beginFrom, beginTo);
-  const isBlock = delimText === "$$" || delimText === "\\[";
-  const isClosed = endFrom !== -1 && endTo !== -1;
-
-  const contentFrom = beginTo;
-  const contentTo = isClosed ? endFrom : Math.min(docLen, windowTo);
-  const blockTo = isClosed ? endTo : contentTo;
-
-  if (pos < contentFrom || pos > contentTo) return null;
-  if (contentTo - contentFrom > MAX_MATH_BLOCK_CHARS) return null;
-
-  const startLine = doc.lineAt(contentFrom).number;
-  const endLine = doc.lineAt(contentTo).number;
-  if (endLine - startLine > MAX_MATH_BLOCK_LINES) return null;
-
-  return {
-    blockFrom: beginFrom,
-    blockTo,
-    contentFrom,
-    contentTo,
-    isBlock,
-    isClosed,
-  };
+  const region = finalizeMathRegion(doc, beginFrom, beginTo, endFrom, endTo, windowTo);
+  if (!region || pos < region.contentFrom || pos > region.contentTo) return null;
+  return region;
 }
 
 /**
- * Lazily builds (and caches per immutable CM6 Text doc) the object relation tree
- * and flattened jump segments for the current math block.
+ * Lazily builds (and caches per immutable CM6 Text doc and parse options) the object tree
+ * and flattened jump segments for `region`.
  */
-export function getAnalyzedMathBlock(state: EditorState, pos: number): AnalyzedMathBlock | null {
-  const region = findMathRegion(state, pos);
-  if (!region) return null;
-
-  const cached = docCache.get(state.doc);
-  if (
-    cached &&
-    cached.contentFrom === region.contentFrom &&
-    cached.contentTo === region.contentTo
-  ) {
-    return cached.analyzed;
+export function analyzeMathRegion(
+  state: EditorState,
+  region: MathRegion,
+  parseOptions?: MathParseOptions
+): AnalyzedMathBlock {
+  const parseAmbiguousBars = parseOptions?.parseAmbiguousBars ?? true;
+  let entry = docCache.get(state.doc);
+  if (!entry || entry.parseAmbiguousBars !== parseAmbiguousBars) {
+    entry = { parseAmbiguousBars, blocks: new Map() };
+    docCache.set(state.doc, entry);
   }
 
+  const key = `${region.contentFrom}:${region.contentTo}`;
+  const cached = entry.blocks.get(key);
+  if (cached) return cached;
+
   const source = state.doc.sliceString(region.contentFrom, region.contentTo);
-  const tree = buildMathTree(source);
+  const tree = buildMathTree(source, { parseAmbiguousBars });
   const jumpSegments = collectJumpSegments(tree);
   const analyzed: AnalyzedMathBlock = { region, tree, jumpSegments };
-
-  docCache.set(state.doc, {
-    contentFrom: region.contentFrom,
-    contentTo: region.contentTo,
-    analyzed,
-  });
-
+  entry.blocks.set(key, analyzed);
   return analyzed;
+}
+
+export function getAnalyzedMathBlock(
+  state: EditorState,
+  pos: number,
+  parseOptions?: MathParseOptions
+): AnalyzedMathBlock | null {
+  const region = findMathRegion(state, pos);
+  if (!region) return null;
+  return analyzeMathRegion(state, region, parseOptions);
 }

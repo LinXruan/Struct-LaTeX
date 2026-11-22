@@ -67,6 +67,7 @@ const ASYMMETRIC_CLOSE: ReadonlyMap<string, string> = new Map([
 ]);
 
 const SYMMETRIC_DELIM: ReadonlyMap<string, string> = new Map([
+  ["|", "pipe"],
   ["\\|", "escaped_bar"],
   ["∥", "unicode_norm"],
 ]);

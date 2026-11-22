@@ -16,12 +16,24 @@ const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 343 94" f
 </svg>`;
 
 /**
- * Reserved extension page for upcoming special settings (next PLAN).
+ * Renders special global parser/editor toggles.
  */
-export function renderSpecialSettingsPage(parent: HTMLElement, _host: GeneralSettingsHost): void {
-  const card = parent.createDiv({ cls: "struct-latex-special-placeholder" });
-  card.createDiv({ cls: "struct-latex-special-title", text: t("settings.special.placeholderTitle") });
-  card.createEl("p", { cls: "struct-latex-special-body", text: t("settings.special.placeholderBody") });
+export function renderSpecialSettingsPage(parent: HTMLElement, host: GeneralSettingsHost): void {
+  new Setting(parent)
+    .setName(t("settings.special.parseAmbiguousBars.name"))
+    .setDesc(t("settings.special.parseAmbiguousBars.desc"))
+    .addToggle((toggle) =>
+      toggle.setValue(host.settings.parseAmbiguousBars).onChange(async (v) => {
+        host.settings.parseAmbiguousBars = v;
+        await host.saveSettings();
+        host.onSpecialSettingsChanged?.();
+      })
+    );
+
+  parent.createDiv({
+    cls: "struct-latex-hijack-note",
+    text: t("settings.special.parseAmbiguousBars.note"),
+  });
 }
 
 export function renderAboutPage(parent: HTMLElement, manifest: PluginManifest): void {

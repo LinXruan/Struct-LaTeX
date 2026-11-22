@@ -17,9 +17,20 @@ export interface Slot {
   textMode?: boolean;
 }
 
-export interface TriggerRange {
+export interface TextSpan {
   from: number;
   to: number;
+}
+
+export type TriggerRange = TextSpan;
+
+export interface MathParseOptions {
+  /**
+   * Enables partial non-nested parsing for `|` and `∥`:
+   * same-level even occurrences pair sequentially, while same-level odd
+   * occurrences stay plain atoms and are exposed in `MathTree.oddBarSpans`.
+   */
+  parseAmbiguousBars?: boolean;
 }
 
 interface BaseLatexObject {
@@ -59,6 +70,7 @@ export interface MathTree {
   source: string;
   roots: LatexObject[];
   allObjects: LatexObject[];
+  oddBarSpans: TextSpan[];
 }
 
 export interface DeleteSpan {

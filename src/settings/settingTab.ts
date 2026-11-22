@@ -22,6 +22,7 @@ export interface StructLatexSettingHost extends Plugin {
   ruleStore: RuleStore;
   saveSettings(): Promise<void>;
   syncLocale(): void;
+  onSpecialSettingsChanged?: () => void;
 }
 
 export class StructLatexSettingTab extends PluginSettingTab {
@@ -43,6 +44,7 @@ export class StructLatexSettingTab extends PluginSettingTab {
     this.ruleList = new RuleListController({
       ruleStore: host.ruleStore,
       getDialect: () => host.settings.outputDialect,
+      getParseAmbiguousBars: () => host.settings.parseAmbiguousBars,
       onOpenEditor: (rule, isNew) => this.openRuleEditor(rule, isNew),
       onRulesChanged: () => this.refreshAfterRulesMutation(),
     });
@@ -124,6 +126,7 @@ export class StructLatexSettingTab extends PluginSettingTab {
     this.disposeEditor = renderRuleEditorView(this.editorViewEl, {
       rule: target,
       dialect: this.host.settings.outputDialect,
+      parseAmbiguousBars: this.host.settings.parseAmbiguousBars,
       isNew,
       onSave: async (saved) => {
         await this.ruleList.upsertAndSaveRule(saved, isNew);

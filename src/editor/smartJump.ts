@@ -8,6 +8,7 @@ import { getAnalyzedMathBlock, MathRegion } from "./mathRegion";
 export interface SmartJumpOptions {
   isEnabled?: () => boolean;
   getKeybind?: () => string;
+  getParseAmbiguousBars?: () => boolean;
   isMac?: boolean;
 }
 
@@ -70,7 +71,7 @@ function dispatchJumpAction(view: EditorView, action: JumpAction): boolean {
   return true;
 }
 
-function handleSmartJump(view: EditorView): boolean {
+function handleSmartJump(view: EditorView, parseAmbiguousBars: boolean): boolean {
   const { state } = view;
   if (state.readOnly || view.composing) return false;
   if (state.selection.ranges.length > 1) return false;
@@ -79,7 +80,7 @@ function handleSmartJump(view: EditorView): boolean {
   if (!sel.empty) return false;
 
   const pos = sel.head;
-  const analyzed = getAnalyzedMathBlock(state, pos);
+  const analyzed = getAnalyzedMathBlock(state, pos, { parseAmbiguousBars });
   if (!analyzed) return false;
 
   const relPos = pos - analyzed.region.contentFrom;
@@ -104,6 +105,6 @@ export function createSmartJumpExtension(options: SmartJumpOptions = {}): Extens
     getKeybind: options.getKeybind ?? (() => "Tab"),
     defaultKeybind: "Tab",
     isMac: options.isMac,
-    run: handleSmartJump,
+    run: (view) => handleSmartJump(view, options.getParseAmbiguousBars?.() ?? true),
   });
 }

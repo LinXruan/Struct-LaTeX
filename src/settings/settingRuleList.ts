@@ -8,6 +8,7 @@ import { createDefaultFilterState, createDraftRule, filterRules, FilterState } f
 export interface RuleListControllerHost {
   ruleStore: RuleStore;
   getDialect: () => OutputDialect;
+  getParseAmbiguousBars: () => boolean;
   onOpenEditor: (rule: InputRule, isNew: boolean) => void;
   onRulesChanged: () => void;
 }
@@ -42,7 +43,8 @@ export class RuleListController {
   }
 
   private getRowSignature(rule: InputRule, isDraft: boolean): string {
-    return `${this.host.getDialect()}:${getLocale()}:${isDraft ? 1 : 0}:${JSON.stringify(rule)}`;
+    const barFlag = this.host.getParseAmbiguousBars() ? 1 : 0;
+    return `${this.host.getDialect()}:${barFlag}:${getLocale()}:${isDraft ? 1 : 0}:${JSON.stringify(rule)}`;
   }
 
   private updateRowCacheSig(rule: InputRule): void {
@@ -73,6 +75,7 @@ export class RuleListController {
   private buildCallbacks(previewManager: LazyMathPreviewManager): RuleRowCallbacks {
     return {
       getDialect: () => this.host.getDialect(),
+      getParseAmbiguousBars: () => this.host.getParseAmbiguousBars(),
       previewManager,
       onCommitRule: async (updated, isDraft) => {
         await this.upsertAndSaveRule(updated, isDraft);

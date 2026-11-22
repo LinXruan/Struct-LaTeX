@@ -8,6 +8,7 @@ import { findEmptyMathBlockDeleteSpan, getAnalyzedMathBlock } from "./mathRegion
 export interface SmartBackspaceOptions {
   isEnabled?: () => boolean;
   getKeybind?: () => string;
+  getParseAmbiguousBars?: () => boolean;
   isMac?: boolean;
 }
 
@@ -21,7 +22,7 @@ function dispatchAtomicDelete(view: EditorView, from: number, to: number): boole
   return true;
 }
 
-function handleSmartBackspace(view: EditorView): boolean {
+function handleSmartBackspace(view: EditorView, parseAmbiguousBars: boolean): boolean {
   const { state } = view;
   if (state.readOnly || view.composing) return false;
   if (state.selection.ranges.length > 1) return false;
@@ -38,7 +39,7 @@ function handleSmartBackspace(view: EditorView): boolean {
   }
 
   // 2. Single-math-block object tree lookup & transitive delete closure
-  const analyzed = getAnalyzedMathBlock(state, pos);
+  const analyzed = getAnalyzedMathBlock(state, pos, { parseAmbiguousBars });
   if (!analyzed) return false;
 
   const relPos = pos - analyzed.region.contentFrom;
@@ -58,6 +59,6 @@ export function createSmartBackspaceExtension(options: SmartBackspaceOptions = {
     getKeybind: options.getKeybind ?? (() => "Backspace"),
     defaultKeybind: "Backspace",
     isMac: options.isMac,
-    run: handleSmartBackspace,
+    run: (view) => handleSmartBackspace(view, options.getParseAmbiguousBars?.() ?? true),
   });
 }

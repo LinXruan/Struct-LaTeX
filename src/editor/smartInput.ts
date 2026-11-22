@@ -14,6 +14,7 @@ export interface SmartInputProvider {
   isEnabled: () => boolean;
   getCompiledRules: () => CompiledRuleSet;
   getDialect: () => OutputDialect;
+  getParseAmbiguousBars?: () => boolean;
   isMac?: boolean;
   onJsError?: (rule: InputRule, message: string) => void;
 }
@@ -23,9 +24,9 @@ interface PendingChord {
   expiresAt: number;
 }
 
-function buildContextPair(state: EditorState, pos: number, key: string) {
+function buildContextPair(state: EditorState, pos: number, key: string, parseAmbiguousBars: boolean) {
   const inCode = isInCodeOrFrontmatter(state, pos);
-  const analyzed = inCode ? null : getAnalyzedMathBlock(state, pos);
+  const analyzed = inCode ? null : getAnalyzedMathBlock(state, pos, { parseAmbiguousBars });
   const line = state.doc.lineAt(pos);
   const lineBefore = state.doc.sliceString(line.from, pos);
   const lineAfter = state.doc.sliceString(pos, line.to);
@@ -88,7 +89,7 @@ export function createSmartInputExtension(provider: SmartInputProvider): Extensi
       if (state.selection.ranges.length > 1) return false;
       if (from !== to || text.length === 0 || text.length > 2) return false;
 
-      const ctxPair = buildContextPair(state, from, text);
+      const ctxPair = buildContextPair(state, from, text, provider.getParseAmbiguousBars?.() ?? true);
       const match = evaluateAutoInput(
         provider.getCompiledRules(),
         ctxPair,
@@ -130,7 +131,12 @@ export function createSmartInputExtension(provider: SmartInputProvider): Extensi
           }
           if (now <= pending.expiresAt) {
             const chord = `${pending.prefix} ${combo}`;
-            const ctxPair = buildContextPair(state, sel.head, "");
+            const ctxPair = buildContextPair(
+              state,
+              sel.head,
+              "",
+              provider.getParseAmbiguousBars?.() ?? true
+            );
             const chordMatch = evaluateHotkey(compiled, ctxPair, chord, dialect, provider.onJsError);
             if (chordMatch) {
               event.preventDefault();
@@ -149,7 +155,12 @@ export function createSmartInputExtension(provider: SmartInputProvider): Extensi
           return false;
         }
 
-        const ctxPair = buildContextPair(state, sel.head, "");
+        const ctxPair = buildContextPair(
+          state,
+          sel.head,
+          "",
+          provider.getParseAmbiguousBars?.() ?? true
+        );
 
         if (hasSingleHotkey) {
           const hotkeyMatch = evaluateHotkey(compiled, ctxPair, combo, dialect, provider.onJsError);

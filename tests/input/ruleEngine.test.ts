@@ -335,4 +335,30 @@ describe("Rule Engine — Triggers, Guards, Structural JS Context & Error Isolat
     const previewErr = evaluateRulePreview(buggy, "latex" as OutputDialect);
     assert.ok(previewErr.error?.includes("boom"));
   });
+
+  it("syncs ambiguous-bar parsing option into rule preview sandbox (enabled by default)", () => {
+    const checkPrevBracketJs: InputRule = {
+      id: "js-check-bar",
+      name: "check prev bracket",
+      group: "custom",
+      type: "js",
+      enabled: true,
+      scope: "math",
+      triggerMode: "auto",
+      exampleInput: "|x|!",
+      code: [
+        'if (ctx.key !== "!") return null;',
+        'var kind = ctx.prevObject ? ctx.prevObject.kind : "none";',
+        'return { replaceLength: 1, insert: kind };',
+      ].join("\n"),
+    };
+
+    const defaultPreview = evaluateRulePreview(checkPrevBracketJs, "latex");
+    assert.equal(defaultPreview.rawOutput, "|x|bracket");
+
+    const disabledPreview = evaluateRulePreview(checkPrevBracketJs, "latex", {
+      parseAmbiguousBars: false,
+    });
+    assert.equal(disabledPreview.rawOutput, "|x|atom");
+  });
 });

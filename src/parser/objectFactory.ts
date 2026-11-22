@@ -1,3 +1,4 @@
+import { ENV_MANDATORY_HEADER_ARGS, ENV_OPTIONAL_HEADER_ARGS } from "./commandTable";
 import { Token } from "./tokenizer";
 import {
   AtomObject,
@@ -21,6 +22,53 @@ export function skipWhitespaceTokens(tokens: readonly Token[], start: number, en
   let i = start;
   while (i < end && tokens[i].kind === "whitespace") i++;
   return i;
+}
+
+/**
+ * Advances past optional (`[t]`/`[b]`/`[c]`) and mandatory (`{...}`) header arguments
+ * immediately following `\begin{env}`. Shared by Pass-2 bar matching and env bracket building.
+ */
+export function resolveEnvHeaderEndIdx(
+  source: string,
+  tokens: readonly Token[],
+  matches: ReadonlyMap<number, number>,
+  openIdx: number,
+  endIdx: number
+): number {
+  const envName = tokens[openIdx].envName ?? "";
+  let headerEndIdx = openIdx + 1;
+
+  if (ENV_OPTIONAL_HEADER_ARGS.has(envName)) {
+    const peek = skipWhitespaceTokens(tokens, headerEndIdx, endIdx);
+    const optClose = matches.get(peek);
+    if (
+      peek < endIdx &&
+      tokens[peek].kind === "bracket_open" &&
+      optClose !== undefined &&
+      optClose < endIdx &&
+      tokens[optClose].kind === "bracket_close"
+    ) {
+      const argText = source.slice(tokens[peek].to, tokens[optClose].from).trim();
+      if (argText === "t" || argText === "b" || argText === "c") {
+        headerEndIdx = optClose + 1;
+      }
+    }
+  }
+
+  if (ENV_MANDATORY_HEADER_ARGS.has(envName)) {
+    const peek = skipWhitespaceTokens(tokens, headerEndIdx, endIdx);
+    const argClose = matches.get(peek);
+    if (
+      peek < endIdx &&
+      tokens[peek].kind === "brace_open" &&
+      argClose !== undefined &&
+      argClose < endIdx
+    ) {
+      headerEndIdx = argClose + 1;
+    }
+  }
+
+  return headerEndIdx;
 }
 
 export function createAtom(

@@ -1,5 +1,6 @@
 import { t } from "../i18n";
 import { buildMathTree } from "../parser/builder";
+import { MathParseOptions } from "../parser/types";
 import { buildRuleContext, expandTemplate } from "./contextBuilder";
 import { convertOutputDialect } from "./dialectConverter";
 import { expandRegexTemplate } from "./ruleEngine";
@@ -82,7 +83,11 @@ function toDialectOutput(
  * Computes the MathJax preview TeX and dialect-converted output string for any rule.
  * Used both by the Settings UI MathJax preview and automated smoke tests.
  */
-export function evaluateRulePreview(rule: InputRule, dialect: OutputDialect): RulePreviewResult {
+export function evaluateRulePreview(
+  rule: InputRule,
+  dialect: OutputDialect,
+  parseOptions?: MathParseOptions
+): RulePreviewResult {
   const validation = validateRule(rule);
   if (!validation.valid) {
     return { tex: "", rawOutput: "", error: validation.errors[0] };
@@ -136,7 +141,9 @@ export function evaluateRulePreview(rule: InputRule, dialect: OutputDialect): Ru
     const isAuto = rule.triggerMode === "auto";
     const before = isAuto ? sample.slice(0, -1) : sample;
     const key = isAuto ? sample.slice(-1) : "";
-    const tree = inMath ? buildMathTree(before) : null;
+    const tree = inMath
+      ? buildMathTree(before, { parseAmbiguousBars: parseOptions?.parseAmbiguousBars ?? true })
+      : null;
     const ctx = buildRuleContext({
       key,
       before,

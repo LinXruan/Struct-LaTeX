@@ -9,6 +9,7 @@ import { attachPointerDragSort, ReorderCallback } from "./ruleDragSort";
 
 export interface RuleRowCallbacks {
   getDialect: () => OutputDialect;
+  getParseAmbiguousBars?: () => boolean;
   previewManager: LazyMathPreviewManager;
   onCommitRule: (rule: InputRule, isNewDraft: boolean) => Promise<void>;
   onToggleEnabled: (rule: InputRule, enabled: boolean) => Promise<void>;
@@ -40,6 +41,10 @@ export function renderRuleRow(
   const actions = row.createDiv({ cls: "struct-latex-rule-actions" });
 
   let localDraft = cloneRule(rule);
+  const previewOf = (r: InputRule) =>
+    evaluateRulePreview(r, callbacks.getDialect(), {
+      parseAmbiguousBars: callbacks.getParseAmbiguousBars?.() ?? true,
+    });
 
   const syncInlineValidity = () => {
     const check = validateRule(localDraft);
@@ -86,20 +91,14 @@ export function renderRuleRow(
 
     const commitIfValid = async () => {
       if (!syncInlineValidity()) {
-        callbacks.previewManager.refresh(
-          previewEl,
-          evaluateRulePreview(localDraft, callbacks.getDialect())
-        );
+        callbacks.previewManager.refresh(previewEl, previewOf(localDraft));
         return;
       }
       const wasDraft = !committed;
       committed = true;
       await callbacks.onCommitRule(localDraft, wasDraft);
       row.removeClass("struct-latex-rule-draft");
-      callbacks.previewManager.refresh(
-        previewEl,
-        evaluateRulePreview(localDraft, callbacks.getDialect())
-      );
+      callbacks.previewManager.refresh(previewEl, previewOf(localDraft));
     };
 
     const onInputChange = () => {
@@ -110,10 +109,7 @@ export function renderRuleRow(
         textDraft.name = textDraft.trigger.trim();
       }
       if (syncInlineValidity()) {
-        callbacks.previewManager.refresh(
-          previewEl,
-          evaluateRulePreview(localDraft, callbacks.getDialect())
-        );
+        callbacks.previewManager.refresh(previewEl, previewOf(localDraft));
       }
     };
 
@@ -155,9 +151,7 @@ export function renderRuleRow(
     left.createDiv({ cls: "struct-latex-rule-summary", text: summary });
   }
 
-  callbacks.previewManager.observe(previewEl, () =>
-    evaluateRulePreview(localDraft, callbacks.getDialect())
-  );
+  callbacks.previewManager.observe(previewEl, () => previewOf(localDraft));
 
   // Strictly 1 toggle + 2 buttons per row
   const toggle = new ToggleComponent(actions);

@@ -11,6 +11,7 @@ export interface GeneralSettingsHost {
   settings: PluginSettings;
   saveSettings(): Promise<void>;
   syncLocale(): void;
+  onSpecialSettingsChanged?: () => void;
 }
 
 export interface KeybindFeaturePageOptions {

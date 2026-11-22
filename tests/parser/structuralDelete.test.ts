@@ -2,14 +2,18 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { buildMathTree } from "../../src/parser/builder";
 import { resolveStructuralDelete } from "../../src/parser/deleteResolver";
+import { MathParseOptions } from "../../src/parser/types";
 
 const CARET = "▮";
 
-function runDelete(pattern: string): { result: string; intercepted: boolean } {
+function runDelete(
+  pattern: string,
+  options?: MathParseOptions
+): { result: string; intercepted: boolean } {
   const pos = pattern.indexOf(CARET);
   assert.notEqual(pos, -1, `Test pattern missing caret ${CARET}: ${pattern}`);
   const source = pattern.slice(0, pos) + pattern.slice(pos + CARET.length);
-  const tree = buildMathTree(source);
+  const tree = buildMathTree(source, options);
   const span = resolveStructuralDelete(tree, pos);
 
   if (!span) {
@@ -27,14 +31,14 @@ function runDelete(pattern: string): { result: string; intercepted: boolean } {
   };
 }
 
-function expectDelete(input: string, expected: string): void {
-  const { result, intercepted } = runDelete(input);
+function expectDelete(input: string, expected: string, options?: MathParseOptions): void {
+  const { result, intercepted } = runDelete(input, options);
   assert.equal(intercepted, true, `Expected structural delete for: ${input}`);
   assert.equal(result, expected, `Input: ${input}`);
 }
 
-function expectNative(input: string): void {
-  const { intercepted } = runDelete(input);
+function expectNative(input: string, options?: MathParseOptions): void {
+  const { intercepted } = runDelete(input, options);
   assert.equal(intercepted, false, `Expected native Backspace fallback for: ${input}`);
 }
 
@@ -168,10 +172,62 @@ describe("Structural Delete — Delimiters, Mixed Intervals, Bare Bars & Align B
     expectDelete("f([0, 1)▮)", "f(▮)");
   });
 
-  it("ignores bare `|` and `<` `>` as brackets", () => {
+  it("ignores bare `|` when disabled and always ignores `<` `>` as brackets", () => {
     expectDelete("P(A|B)▮", "P▮");
-    expectNative("|x|▮");
+    expectNative("|x|▮", { parseAmbiguousBars: false });
     expectNative("a < b▮");
+  });
+
+  it("supports partial non-nested parsing for even `|` and `∥` and exposes odd bars", () => {
+    // Same-level even `|` pairs sequentially without nesting
+    expectDelete("|x|▮", "▮");
+    expectDelete("|▮x|", "▮");
+    expectDelete("||▮", "▮");
+    expectDelete("(|a|+|b|+|c|)▮", "▮");
+    expectDelete("(|a|+|b|+|c|▮)", "(|a|+|b|+▮)");
+    expectDelete("(|a|▮+|b|+|c|)", "(▮+|b|+|c|)");
+    expectDelete("(|▮a|+|b|+|c|)", "(▮+|b|+|c|)");
+    expectDelete("|a|▮_{2}^{3}", "▮");
+    expectDelete("|a|_{2}^{3}▮", "|a|_{2}▮");
+
+    // Same-level even `∥` pairs sequentially without nesting
+    expectDelete("(∥a∥+∥b∥+∥c∥▮)", "(∥a∥+∥b∥+▮)");
+    expectDelete("| ∥x∥ |▮", "▮");
+    expectDelete("| ∥x∥▮ |", "| ▮|");
+    expectDelete("∥ |a| + |b| ∥▮", "▮");
+    expectDelete("\\left|a\\right| + |b|▮", "\\left|a\\right| + ▮");
+
+    // Same-level odd `|` or `∥`: none parsed, all recorded in oddBarSpans
+    expectNative("(|a|▮+|b)");
+    assert.deepEqual(buildMathTree("(|a|+|b)").oddBarSpans, [
+      { from: 1, to: 2 },
+      { from: 3, to: 4 },
+      { from: 5, to: 6 },
+    ]);
+    expectNative("(∥a∥▮+∥b)");
+    assert.deepEqual(buildMathTree("(∥a∥+∥b)").oddBarSpans, [
+      { from: 1, to: 2 },
+      { from: 3, to: 4 },
+      { from: 5, to: 6 },
+    ]);
+
+    // Ordinary brackets isolate levels independently
+    assert.deepEqual(buildMathTree("(A | B) + |c|").oddBarSpans, [{ from: 3, to: 4 }]);
+    expectDelete("(A | B) + |c|▮", "(A | B) + ▮");
+    assert.deepEqual(buildMathTree("|P(A|B)|").oddBarSpans, [{ from: 4, to: 5 }]);
+    expectDelete("|P(A|B)|▮", "▮");
+
+    // Skips env header args (`\begin{array}{c|c}`), `\text{...}`, and keeps `\|` untouched
+    assert.deepEqual(buildMathTree("\\begin{array}{c|c} a & b \\end{array}").oddBarSpans, []);
+    assert.deepEqual(buildMathTree("\\begin{array}{c|c} |a| & |b").oddBarSpans, [
+      { from: 19, to: 20 },
+      { from: 21, to: 22 },
+      { from: 25, to: 26 },
+    ]);
+    assert.deepEqual(buildMathTree("\\text{a | b} + |c|").oddBarSpans, []);
+    expectDelete("\\text{a | b} + |c|▮", "\\text{a | b} + ▮");
+    assert.deepEqual(buildMathTree("\\|a\\| + \\|b").oddBarSpans, []);
+    assert.deepEqual(buildMathTree("(|a|+|b)", { parseAmbiguousBars: false }).oddBarSpans, []);
   });
 
   it("deletes composite align breaks as atomic words (with Scheme 1 trailing space)", () => {

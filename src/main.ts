@@ -1,6 +1,8 @@
 import { Extension } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import * as obsidianApi from "obsidian";
-import { Notice, Platform, Plugin, moment } from "obsidian";
+import { MarkdownView, Notice, Platform, Plugin, moment } from "obsidian";
+import { createOddBarHighlightExtension, refreshOddBarsEffect } from "./editor/oddBarHighlight";
 import { createSmartBackspaceExtension } from "./editor/smartBackspace";
 import { createSmartInputExtension } from "./editor/smartInput";
 import { createSmartJumpExtension } from "./editor/smartJump";
@@ -51,17 +53,20 @@ export default class StructLatexPlugin extends Plugin {
       createSmartBackspaceExtension({
         isEnabled: () => this.settings.smartBackspaceEnabled,
         getKeybind: () => this.settings.smartBackspaceKey,
+        getParseAmbiguousBars: () => this.settings.parseAmbiguousBars,
         isMac: Platform.isMacOS,
       }),
       createSmartJumpExtension({
         isEnabled: () => this.settings.smartJumpEnabled,
         getKeybind: () => this.settings.smartJumpKey,
+        getParseAmbiguousBars: () => this.settings.parseAmbiguousBars,
         isMac: Platform.isMacOS,
       }),
       createSmartInputExtension({
         isEnabled: () => this.settings.smartInputEnabled,
         getCompiledRules: () => this.ruleStore.getCompiled(),
         getDialect: () => this.settings.outputDialect,
+        getParseAmbiguousBars: () => this.settings.parseAmbiguousBars,
         isMac: Platform.isMacOS,
         onJsError: (rule, message) => {
           const now = Date.now();
@@ -70,11 +75,22 @@ export default class StructLatexPlugin extends Plugin {
             new Notice(t("notice.jsError", { name: rule.name, message }));
           }
         },
+      }),
+      createOddBarHighlightExtension({
+        isEnabled: () => this.settings.parseAmbiguousBars,
       })
     );
 
     this.registerEditorExtension(this.editorExtensions);
     this.addSettingTab(new StructLatexSettingTab(this.app, this));
+  }
+
+  onSpecialSettingsChanged(): void {
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      if (!(leaf.view instanceof MarkdownView)) return;
+      const cm = (leaf.view.editor as unknown as { cm?: EditorView })?.cm;
+      cm?.dispatch({ effects: refreshOddBarsEffect.of(null) });
+    });
   }
 
   async loadSettings(): Promise<void> {
@@ -88,6 +104,10 @@ export default class StructLatexPlugin extends Plugin {
       this.settings.smartJumpKey,
       DEFAULT_PLUGIN_SETTINGS.smartJumpKey
     );
+    this.settings.parseAmbiguousBars =
+      typeof loaded?.parseAmbiguousBars === "boolean"
+        ? loaded.parseAmbiguousBars
+        : DEFAULT_PLUGIN_SETTINGS.parseAmbiguousBars;
   }
 
   async saveSettings(): Promise<void> {

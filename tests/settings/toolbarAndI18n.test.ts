@@ -173,9 +173,12 @@ describe("I18n — Dictionary Parity, Obsidian Language Resolution & Localized M
 });
 
 describe("Feature Keybind Matching & Plugin Settings Defaults", () => {
-  it("provides Backspace and Tab defaults and normalizes invalid keybinds safely", () => {
+  it("provides Backspace, Tab, and Special Settings defaults and normalizes invalid keybinds safely", () => {
     assert.equal(DEFAULT_PLUGIN_SETTINGS.smartBackspaceKey, "Backspace");
     assert.equal(DEFAULT_PLUGIN_SETTINGS.smartJumpKey, "Tab");
+    assert.equal(DEFAULT_PLUGIN_SETTINGS.parseAmbiguousBars, true);
+    assert.ok(t("settings.special.parseAmbiguousBars.name", undefined, "zh").includes("双竖线"));
+    assert.ok(t("settings.special.parseAmbiguousBars.name", undefined, "en").includes("Bar"));
 
     assert.equal(resolveFeatureKeybind("alt+d", "Backspace"), "Alt+D");
     assert.equal(resolveFeatureKeybind("shift+tab", "Tab"), "Shift+Tab");

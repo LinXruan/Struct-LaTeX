@@ -51,8 +51,9 @@ export interface I18nMessages {
   "settings.nav.specialDesc": string;
   "settings.nav.about": string;
   "settings.nav.aboutDesc": string;
-  "settings.special.placeholderTitle": string;
-  "settings.special.placeholderBody": string;
+  "settings.special.parseAmbiguousBars.name": string;
+  "settings.special.parseAmbiguousBars.desc": string;
+  "settings.special.parseAmbiguousBars.note": string;
   "settings.about.version": string;
   "settings.about.author": string;
   "settings.about.repo": string;

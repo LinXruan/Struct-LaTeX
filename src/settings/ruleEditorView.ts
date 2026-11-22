@@ -9,6 +9,7 @@ import { buildPreviewPanel, renderJsReferenceBlock, showValidationFailure } from
 export interface RuleEditorViewOptions {
   rule: InputRule;
   dialect: OutputDialect;
+  parseAmbiguousBars: boolean;
   isNew: boolean;
   onSave: (updated: InputRule) => Promise<void>;
   onCancel: () => void;
@@ -193,7 +194,9 @@ export function renderRuleEditorView(
 
   let refreshPreview: () => void = () => {};
   renderTypeBody(view, draft, () => refreshPreview());
-  refreshPreview = buildPreviewPanel(view, draft, options.dialect, evaluateRulePreview);
+  refreshPreview = buildPreviewPanel(view, draft, options.dialect, (r, d) =>
+    evaluateRulePreview(r, d, { parseAmbiguousBars: options.parseAmbiguousBars })
+  );
   refreshPreview();
   renderGuardsFields(view, draft, () => refreshPreview());
 
