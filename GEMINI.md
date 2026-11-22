@@ -16,14 +16,15 @@
 
 ## 2. 项目概况与环境
 
-- **定位**：Obsidian 智能结构化 LaTeX 编辑插件（`struct-latex`），基于「词法分词 + 作用域配对栈 + 对象关系树」而非正则引擎，实现 CodeMirror 6 实时结构化原子删除、智能光标跳转与智能输入。
+- **定位**：Obsidian 智能结构化 LaTeX 编辑插件（`struct-latex`），基于「词法分词 + 作用域配对栈 + 对象关系树」而非正则引擎，实现 CodeMirror 6 实时结构化整体删除、智能光标跳转与智能输入。
 - **技术栈**：TypeScript + esbuild + Obsidian API + CodeMirror 6；`obsidian`、`electron`、`@codemirror/*`、`@lezer/*` 仅作 `external` 依赖，禁止打包进产物。
 - **本地调试环境**：
   - Obsidian 可执行文件：`D:\Install\Obsidian\Obsidian.exe`
   - 测试仓库：`C:\Users\Administrator\Desktop\TestObsidian`（真机验证时注意停用 `easy-typing-obsidian` 以免按键冲突；写配置文件务必使用无 BOM UTF-8）
 - **源码结构与常用命令**：
   - `src/parser/`：纯解析层（`types` / `commandTable` / `tokenizer` / `matcher` / `objectFactory` / `bracketBuilders` / `builder` / `deleteResolver` / `jumpResolver`），零 Obsidian/DOM 依赖。
-  - `src/editor/`：CM6 集成层（`mathRegion` / `smartBackspace` / `smartJump`）；`src/main.ts` 为插件入口。
+  - `src/input/`：纯输入引擎（`types` / `keybindUtils` / `validation` / `commandCatalog` / `dialectConverter` / `contextBuilder` / `ruleCompiler` / `ruleEngine` / `previewEvaluator` / `defaultJsRules` / `defaultSymbolRules` / `defaultRules`），零 Obsidian/DOM 依赖。
+  - `src/editor/`：CM6 集成层（`mathRegion` / `smartBackspace` / `smartJump` / `smartInput`）；`src/settings/` 为持久化与设置面板 UI；`src/main.ts` 为插件入口、`styles.css` 为样式表。
   - `tests/` & `scripts/run-tests.mjs`：自动化单测（自动递归执行 `tests/**/*.test.ts`）。
   - 常用命令：`npm run typecheck`、`npm test`、`npm run build`、`npm run dev`。
 
@@ -39,7 +40,7 @@
 ## 4. 修改后检查
 
 1. `npm run typecheck`、`npm test` 与 `npm run build` 全部通过，且产物 `main.js` 未内联外部依赖。
-2. 涉及编辑器行为改动时，将 `manifest.json` 与 `main.js` 同步至测试仓库并在真实 Obsidian 中实测对应场景，确认控制台零报错且不破坏原生输入、缩进、撤销栈与 IME。
+2. 涉及编辑器行为改动时，将 `manifest.json`、`main.js` 与 `styles.css` 同步至测试仓库并在真实 Obsidian 中实测对应场景，确认控制台零报错且不破坏原生输入、缩进、撤销栈与 IME。
 3. 仓库与测试仓库均不残留临时笔记、日志、截图或备份文件；行为变化已同步更新 `PLAN/` 与相关文档。
 
 ## 5. 提交规范

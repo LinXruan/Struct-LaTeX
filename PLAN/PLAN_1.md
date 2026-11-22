@@ -25,7 +25,7 @@
      - **单向关联（条件关联）**：后缀对象（`_{...}`、`^{...}`、单 Token `_x`/`^x`、`\limits`/`\nolimits`、`'`）单向附着在左侧宿主 `Host` 上（删除传播方向：`Host → Dependent`，**绝不反向删除宿主**）。
      - **并联约束**：挂载在同一宿主的多个并列后缀（如 `a_{1}^{2}` 中的 `_{1}` 与 `^{2}`）各自并联指向 `Host`，彼此间无传播边。
 3. **传递闭包删除**：
-   - 光标按 `Backspace` 时，定位被触发的 **1 个对象 `target`**，沿 `Parent → Child` 与 `Host → Dependent` 求传递闭包，一次性原子删除闭包覆盖跨度 `[minFrom, maxTo]`。
+   - 光标按 `Backspace` 时，定位被触发的 **1 个对象 `target`**，沿 `Parent → Child` 与 `Host → Dependent` 求传递闭包，一次性整体删除闭包覆盖跨度 `[minFrom, maxTo]`。
    - 典型语义（`|` 为光标）：
      - `\begin{bmatrix}1&2\\3&4\end{bmatrix}_{1}^{2}|` → `\begin{bmatrix}1&2\\3&4\end{bmatrix}_{1}|`
      - `\begin{bmatrix}1&2\\3&4\end{bmatrix}_{1}^{|2}` → `\begin{bmatrix}1&2\\3&4\end{bmatrix}_{1}|`

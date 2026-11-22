@@ -14,7 +14,8 @@ function dispatchAtomicDelete(view: EditorView, from: number, to: number): boole
   return true;
 }
 
-function handleSmartBackspace(view: EditorView): boolean {
+function handleSmartBackspace(view: EditorView, isEnabled: () => boolean): boolean {
+  if (!isEnabled()) return false;
   const { state } = view;
   if (state.readOnly || view.composing) return false;
   if (state.selection.ranges.length > 1) return false;
@@ -45,12 +46,12 @@ function handleSmartBackspace(view: EditorView): boolean {
   );
 }
 
-export function createSmartBackspaceExtension(): Extension {
+export function createSmartBackspaceExtension(isEnabled: () => boolean = () => true): Extension {
   return Prec.highest(
     keymap.of([
       {
         key: "Backspace",
-        run: handleSmartBackspace,
+        run: (view) => handleSmartBackspace(view, isEnabled),
       },
     ])
   );

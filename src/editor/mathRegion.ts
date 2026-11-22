@@ -49,6 +49,17 @@ export function isInCodeContext(state: EditorState, pos: number): boolean {
   return isCode(left) || isCode(right);
 }
 
+export function isInFrontmatterContext(state: EditorState, pos: number): boolean {
+  const tree = syntaxTree(state);
+  const left = tree.resolveInner(pos, -1);
+  const right = tree.resolveInner(pos, 1);
+  return hasNameFragment(left, "frontmatter") || hasNameFragment(right, "frontmatter");
+}
+
+export function isInCodeOrFrontmatter(state: EditorState, pos: number): boolean {
+  return isInCodeContext(state, pos) || isInFrontmatterContext(state, pos);
+}
+
 function isMathBeginName(name: string): boolean {
   return name.includes("formatting-math-begin");
 }

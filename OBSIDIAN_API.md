@@ -427,7 +427,7 @@ const smartInputExt = Prec.highest(
   1. **`Prec.highest(keymap.of([{ key: "Tab", run: (view) => ... }]))`**：规范的 CM6 键位方案。若当前光标不在可跳出的数学结构内，**必须返回 `false`**，将 `Tab` 完整交还 Obsidian 原生逻辑（如列表缩进、4 空格缩进）。
   2. **`contentDOM` 捕获阶段 `keydown`**：若 Obsidian 外层全局 `Scope` 或其他插件拦截了 `Tab`，可在 `ViewPlugin` 中向 `view.contentDOM.addEventListener("keydown", handler, true)` 注册捕获监听，命中条件时调用 `event.preventDefault(); event.stopPropagation();` 后执行 `view.dispatch`。需注意务必检查 `!event.isComposing && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey`。
 
-#### (3) 结构化原子删除：`Backspace`
+#### (3) 结构化整体删除：`Backspace`
 
 `Backspace` 也有两种常见接入点（建议首选 `Prec.highest(keymap.of(...))`）：
 
@@ -437,7 +437,7 @@ const smartInputExt = Prec.highest(
 - **方案 B：`EditorState.transactionFilter`**（`easy-typing-obsidian` 采用的方案）
   - 检查 `tr.isUserEvent("delete.backward")`，在 `tr.startState` 上重新把被原生删掉 1 字符前的位置拼回去，再返回一个扩展删除范围的新事务。
 
-结构原子删除示例：
+结构整体删除示例：
 
 ```ts
 import { Prec } from "@codemirror/state";

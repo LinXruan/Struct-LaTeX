@@ -63,7 +63,8 @@ function dispatchJumpAction(view: EditorView, action: JumpAction): boolean {
   return true;
 }
 
-function handleSmartTab(view: EditorView): boolean {
+function handleSmartTab(view: EditorView, isEnabled: () => boolean): boolean {
+  if (!isEnabled()) return false;
   const { state } = view;
   if (state.readOnly || view.composing) return false;
   if (state.selection.ranges.length > 1) return false;
@@ -91,12 +92,12 @@ function handleSmartTab(view: EditorView): boolean {
   return dispatchJumpAction(view, exitAction);
 }
 
-export function createSmartJumpExtension(): Extension {
+export function createSmartJumpExtension(isEnabled: () => boolean = () => true): Extension {
   return Prec.highest(
     keymap.of([
       {
         key: "Tab",
-        run: handleSmartTab,
+        run: (view) => handleSmartTab(view, isEnabled),
       },
     ])
   );

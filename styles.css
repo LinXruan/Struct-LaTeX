@@ -1,0 +1,259 @@
+.struct-latex-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.struct-latex-search {
+  flex: 1 1 180px;
+}
+
+.struct-latex-io-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.struct-latex-rule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.struct-latex-rule-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) minmax(90px, 180px) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+}
+
+.struct-latex-rule-row.struct-latex-rule-draft {
+  border-style: dashed;
+}
+
+.struct-latex-rule-row.struct-latex-rule-invalid {
+  border-color: var(--text-error);
+  background: color-mix(in srgb, var(--text-error) 8%, var(--background-secondary));
+}
+
+.struct-latex-rule-row.struct-latex-drag-over {
+  border-top: 2px solid var(--interactive-accent);
+}
+
+.struct-latex-rule-row.struct-latex-dragging {
+  opacity: 0.45;
+}
+
+.struct-latex-drag-handle {
+  cursor: grab;
+  color: var(--text-faint);
+  user-select: none;
+  text-align: center;
+  font-size: 13px;
+}
+
+.struct-latex-rule-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.struct-latex-inline-input {
+  font-family: var(--font-monospace);
+  font-size: 12.5px;
+  padding: 4px 6px;
+}
+
+.struct-latex-inline-trigger {
+  width: 96px;
+  min-width: 68px;
+}
+
+.struct-latex-inline-replace {
+  flex: 1 1 140px;
+  min-width: 110px;
+}
+
+.struct-latex-arrow {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.struct-latex-rule-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.struct-latex-rule-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.struct-latex-rule-summary {
+  width: 100%;
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.struct-latex-badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: var(--radius-s);
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.struct-latex-badge.is-type-regex {
+  color: var(--text-accent);
+}
+
+.struct-latex-badge.is-type-js {
+  color: var(--color-orange);
+}
+
+.struct-latex-badge.is-auto {
+  opacity: 0.75;
+}
+
+.struct-latex-rule-preview {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: 28px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 4px;
+}
+
+.struct-latex-rule-preview mjx-container {
+  margin: 0 !important;
+  font-size: 105%;
+}
+
+.struct-latex-preview-error {
+  color: var(--text-error);
+  font-size: 11.5px;
+  word-break: break-word;
+}
+
+.struct-latex-rule-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.struct-latex-row-btn {
+  padding: 4px;
+}
+
+.struct-latex-del-btn:hover {
+  color: var(--text-error);
+}
+
+.struct-latex-empty {
+  padding: 18px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.struct-latex-edit-modal {
+  width: min(720px, 92vw);
+}
+
+.struct-latex-js-label {
+  margin: 8px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.struct-latex-js-editor {
+  width: 100%;
+  min-height: 180px;
+  font-family: var(--font-monospace);
+  font-size: 12.5px;
+  line-height: 1.45;
+  resize: vertical;
+  tab-size: 2;
+}
+
+.struct-latex-json-transfer {
+  min-height: 300px;
+}
+
+.struct-latex-js-ref,
+.struct-latex-guards-details {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+}
+
+.struct-latex-js-ref pre {
+  font-size: 11.5px;
+  overflow-x: auto;
+  margin-top: 6px;
+}
+
+.struct-latex-modal-preview-box {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-s);
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.struct-latex-modal-preview-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.struct-latex-modal-preview-raw {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.struct-latex-modal-preview-math {
+  min-height: 28px;
+}
+
+.struct-latex-modal-error {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--text-error);
+  color: var(--text-error);
+  font-size: 12.5px;
+}
+
+.struct-latex-modal-footer {
+  margin-top: 12px;
+}
+
+@media (max-width: 640px) {
+  .struct-latex-rule-row {
+    grid-template-columns: 16px 1fr auto;
+  }
+  .struct-latex-rule-preview {
+    grid-column: 2 / 4;
+    justify-content: flex-start;
+  }
+}
