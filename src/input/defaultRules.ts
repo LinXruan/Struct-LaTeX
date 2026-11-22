@@ -1,5 +1,6 @@
 import { Locale } from "../i18n/types";
 import { DEFAULT_JS_POST_RULES, DEFAULT_JS_PRE_RULES } from "./defaultJsRules";
+import { MATRIX_RULES } from "./defaultMatrixRules";
 import { localizeDefaultRule } from "./defaultRuleLabels";
 import { GREEK_TEXT_RULES, SYMBOL_AND_ENV_TEXT_RULES } from "./defaultSymbolRules";
 import { InputRule, RegexInputRule, RulesFileData, TextInputRule } from "./types";
@@ -191,6 +192,7 @@ const CORE_STRUCTURE_TEXT_RULES: TextInputRule[] = [
 export function createDefaultRules(locale: Locale = "zh"): InputRule[] {
   return [
     ...DEFAULT_JS_PRE_RULES,
+    ...MATRIX_RULES,
     ...REGEX_CHAIN_ARROW_RULES,
     ...GREEK_TEXT_RULES,
     ...CORE_STRUCTURE_TEXT_RULES,

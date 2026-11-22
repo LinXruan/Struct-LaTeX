@@ -128,12 +128,9 @@ export const SYMBOL_AND_ENV_TEXT_RULES: TextInputRule[] = [
   mathText("arr-up", "箭头", "上箭头", "uarr", "\\uparrow", WB),
   mathText("arr-down", "箭头", "下箭头", "darr", "\\downarrow", WB),
 
-  // Multiline environments (empty shell only, no matrix fill templates)
+  // Multiline environments (matrix & determinant shells live in `defaultMatrixRules.ts`)
   mathText("env-cases", "多行环境与对齐", "分段函数 cases", "cases", "\\begin{cases}\n$0\n\\end{cases}", WB),
   mathText("env-align", "多行环境与对齐", "对齐环境 align", "align", "\\begin{align}\n$0\n\\end{align}", WB),
-  mathText("env-bmatrix", "多行环境与对齐", "方括号矩阵环境", "matb", "\\begin{bmatrix}\n$0\n\\end{bmatrix}", WB),
-  mathText("env-vmatrix", "多行环境与对齐", "行列式环境", "matv", "\\begin{vmatrix}\n$0\n\\end{vmatrix}", WB),
-  mathText("env-pmatrix", "多行环境与对齐", "圆括号矩阵环境", "matp", "\\begin{pmatrix}\n$0\n\\end{pmatrix}", WB),
 
   // Composite align line breaks (`excludeInCommand: false` since `\\` is not a `\cmd`)
   mathText("brk-eq", "多行环境与对齐", "换行等号对齐", "\\\\=", "\\\\ =& ", { excludeInCommand: false }),

@@ -38,8 +38,23 @@ function formatTexForMathJax(rawTex: string): string {
   tex = tex.replace(/∥∥/g, "∥\\square∥");
 
   tex = tex.replace(
-    /(\\begin\{(?:cases|align|bmatrix|vmatrix|pmatrix)\})\s*(\\end\{(?:cases|align|bmatrix|vmatrix|pmatrix)\})/g,
+    /(\\begin\{(?:cases|align|[bpvBV]?matrix|smallmatrix)\})\s*(\\end\{(?:cases|align|[bpvBV]?matrix|smallmatrix)\})/g,
     "$1\\square$2"
+  );
+  tex = tex.replace(
+    /(\\begin\{(?:[bpvBV]?matrix|smallmatrix)\}|\\begin\{array\}\{[^}]*\})([\s\S]*?)(\\end\{(?:[bpvBV]?matrix|smallmatrix|array)\})/g,
+    (_, open: string, body: string, close: string) => {
+      const filled = body
+        .split("\\\\")
+        .map((row) =>
+          row
+            .split("&")
+            .map((cell) => (cell.trim().length === 0 ? " \\square " : cell))
+            .join("&")
+        )
+        .join("\\\\");
+      return `${open}${filled}${close}`;
+    }
   );
 
   if (tex.includes("&") && !tex.includes("\\begin{")) {
