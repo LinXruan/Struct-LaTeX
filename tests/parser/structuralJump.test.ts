@@ -209,6 +209,13 @@ describe("Structural Jump — Unified Newlines, Multiline Envs & Block Exit", ()
     ]);
   });
 
+  it("stops before root-end newlines on Tab and then exits the math block", () => {
+    expectJump("\n  a + ▮b\n", "\n  a + b▮\n");
+    expectJump("\n  a + ▮b  \n", "\n  a + b  ▮\n");
+    expectJump("\n  \\frac{a}{b▮}\n", "\n  \\frac{a}{b}▮\n");
+    expectExit("\n  \\frac{a}{b}▮\n");
+  });
+
   it("signals math-block exit when cursor is at or past the last entity core", () => {
     expectExit("▮");
     expectExit("   ▮   ");

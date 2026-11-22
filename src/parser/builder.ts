@@ -14,7 +14,7 @@ import {
   createWord,
   emitDegradedAtoms,
 } from "./objectFactory";
-import { TokenKind, tokenizeMath } from "./tokenizer";
+import { Token, TokenKind, tokenizeMath } from "./tokenizer";
 import { BracketObject, LatexObject, MathParseOptions, MathTree } from "./types";
 
 const DELIMITER_TOKEN_KINDS: ReadonlySet<TokenKind> = new Set([
@@ -33,6 +33,21 @@ const DELIMITER_TOKEN_KINDS: ReadonlySet<TokenKind> = new Set([
   "sym_delim",
 ]);
 
+/**
+ * Prevents the final root-level object before a closing math delimiter (`$$` / `\]`)
+ * from absorbing a trailing newline (while still absorbing same-line spaces before it).
+ */
+function resolveTrailingSpaceEnd(tok: Token, stopAtNewline: boolean): number {
+  if (!stopAtNewline) return tok.to;
+  for (let idx = 0; idx < tok.text.length; idx++) {
+    const ch = tok.text[idx];
+    if (ch === "\r" || ch === "\n") {
+      return tok.from + idx;
+    }
+  }
+  return tok.to;
+}
+
 function buildRange(
   ctx: BuildContext,
   startIdx: number,
@@ -48,7 +63,11 @@ function buildRange(
     const tok = ctx.tokens[i];
 
     if (tok.kind === "whitespace") {
-      if (!textMode && lastSibling) absorbTrailingSpace(lastSibling, tok.to);
+      if (!textMode && lastSibling) {
+        const stopAtNewline = parent === undefined && i + 1 === endIdx;
+        const absorbEnd = resolveTrailingSpaceEnd(tok, stopAtNewline);
+        if (absorbEnd > tok.from) absorbTrailingSpace(lastSibling, absorbEnd);
+      }
       i++;
       continue;
     }

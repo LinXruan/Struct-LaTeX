@@ -259,6 +259,23 @@ describe("Structural Delete — Unified Whitespace & Text Mode Boundary", () => 
     expectDelete("a▮\n_{2}", "▮");
   });
 
+  it("does not absorb trailing newlines at the end of root math blocks", () => {
+    expectNative("\n123456▮\n");
+    expectNative("\n123456▮\r\n");
+    expectNative("\n123456▮\n  ");
+    expectNative("\n123456\n▮");
+    expectNative("\n123456\n▮\n");
+    expectDelete("\n123456   ▮\n", "\n12345▮\n");
+    expectDelete("\n123456▮   \n", "\n12345▮\n");
+    expectNative("\n123456   \n▮");
+    expectDelete("\n\\sin ▮\n", "\n▮\n");
+    expectDelete("\n\\sin▮\n", "\n▮\n");
+    expectDelete("\n\\frac{a}{b}▮\n", "\n▮\n");
+    expectDelete("\n\\begin{bmatrix}1&2\\\\3&4\\end{bmatrix}▮\n", "\n▮\n");
+    expectDelete("\na_{2}▮\n", "\na▮\n");
+    expectDelete("\na▮\n_{2}\n", "\n▮\n");
+  });
+
   it("absorbs leading whitespace (spaces & newlines) into bracket openers uniformly", () => {
     expectDelete("\\left(   ▮a\\right)", "▮");
     expectDelete("\\left( ▮  a\\right)", "▮");
