@@ -6,7 +6,7 @@ import { createOddBarHighlightExtension, refreshOddBarsEffect } from "./editor/o
 import { createSmartBackspaceExtension } from "./editor/smartBackspace";
 import { createSmartInputExtension } from "./editor/smartInput";
 import { createSmartJumpExtension } from "./editor/smartJump";
-import { resolveAppLocale, setLocale, t } from "./i18n";
+import { Locale, resolveAppLocale, setLocale, t } from "./i18n";
 import { resolveFeatureKeybind } from "./input/keybindUtils";
 import { DEFAULT_PLUGIN_SETTINGS, PluginSettings } from "./input/types";
 import { RuleStore } from "./settings/ruleStore";
@@ -35,16 +35,23 @@ export default class StructLatexPlugin extends Plugin {
   private editorExtensions: Extension[] = [];
   private lastJsErrorAt = 0;
 
-  syncLocale(): void {
-    setLocale(resolveAppLocale(this.settings.language, detectObsidianLanguage()));
+  syncLocale(): Locale {
+    const locale = resolveAppLocale(this.settings.language, detectObsidianLanguage());
+    setLocale(locale);
+    return locale;
+  }
+
+  async onLanguageUpdated(): Promise<void> {
+    const locale = this.syncLocale();
+    await this.ruleStore.syncRulesForLocale(locale);
   }
 
   async onload(): Promise<void> {
     await this.loadSettings();
-    this.syncLocale();
+    const activeLocale = this.syncLocale();
 
     this.ruleStore = new RuleStore(this.app, this.manifest);
-    const { loadError } = await this.ruleStore.load();
+    const { loadError } = await this.ruleStore.load(activeLocale);
     if (loadError) {
       new Notice(t("notice.loadError", { err: loadError }));
     }

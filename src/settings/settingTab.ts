@@ -1,5 +1,5 @@
 import { App, Plugin, PluginSettingTab, Setting } from "obsidian";
-import { t } from "../i18n";
+import { getLocale, Locale, t } from "../i18n";
 import { InputRule, PluginSettings } from "../input/types";
 import { renderRuleEditorView } from "./ruleEditorView";
 import { InlinePanelMode, renderInlineActionPanel } from "./ruleInlinePanels";
@@ -21,7 +21,8 @@ export interface StructLatexSettingHost extends Plugin {
   settings: PluginSettings;
   ruleStore: RuleStore;
   saveSettings(): Promise<void>;
-  syncLocale(): void;
+  syncLocale(): Locale;
+  onLanguageUpdated?: () => Promise<void>;
   onSpecialSettingsChanged?: () => void;
 }
 
@@ -96,7 +97,7 @@ export class StructLatexSettingTab extends PluginSettingTab {
         this.refreshAfterRulesMutation();
       },
       onReset: async () => {
-        await this.host.ruleStore.resetToDefaults();
+        await this.host.ruleStore.resetToDefaults(getLocale());
         this.ruleList.pendingNewTextDraft = null;
         this.refreshAfterRulesMutation();
       },

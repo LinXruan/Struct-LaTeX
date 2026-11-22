@@ -59,7 +59,7 @@ export const ZH_MESSAGES: I18nMessages = {
   "settings.about.license": "开源证书",
   "settings.about.licenseValue": "AGPL-3.0 (GNU Affero General Public License v3.0)",
   "settings.language.name": "语言",
-  "settings.language.desc": "界面显示语言（默认跟随 Obsidian 语言，不影响输入规则）",
+  "settings.language.desc": "界面显示语言（默认跟随 Obsidian 语言；若 rules.json 未被自定义修改，切换语言时将自动切换对应语言默认规则）",
   "settings.language.auto": "跟随 Obsidian（自动）",
   "settings.language.zh": "简体中文",
   "settings.language.en": "English",

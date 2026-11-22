@@ -88,19 +88,57 @@ describe("Official Default Rules — Integrity, Prefix Audit & Preview Smoke Tes
   });
 
   it("renders valid non-empty previews for every official rule across all 3 dialects", () => {
-    const rules = createDefaultRules();
-    const dialects: OutputDialect[] = ["latex", "unicode", "raw"];
+    for (const locale of ["zh", "en"] as const) {
+      const rules = createDefaultRules(locale);
+      const dialects: OutputDialect[] = ["latex", "unicode", "raw"];
 
-    for (const rule of rules) {
-      for (const dialect of dialects) {
-        const preview = evaluateRulePreview(rule, dialect);
-        assert.equal(
-          preview.error,
-          undefined,
-          `Rule ${rule.id} failed preview in ${dialect}: ${preview.error}`
-        );
-        assert.ok(preview.tex.trim().length > 0, `Rule ${rule.id} produced empty tex`);
-        assert.ok(preview.rawOutput.length > 0, `Rule ${rule.id} produced empty rawOutput`);
+      for (const rule of rules) {
+        for (const dialect of dialects) {
+          const preview = evaluateRulePreview(rule, dialect);
+          assert.equal(
+            preview.error,
+            undefined,
+            `Rule ${rule.id} (${locale}) failed preview in ${dialect}: ${preview.error}`
+          );
+          assert.ok(preview.tex.trim().length > 0, `Rule ${rule.id} (${locale}) produced empty tex`);
+          assert.ok(preview.rawOutput.length > 0, `Rule ${rule.id} (${locale}) produced empty rawOutput`);
+        }
+      }
+    }
+  });
+
+  it("localizes all English rule groups and names without leftover CJK characters while keeping rule logic identical", () => {
+    const zhRules = createDefaultRules("zh");
+    const enRules = createDefaultRules("en");
+    assert.equal(enRules.length, zhRules.length);
+
+    const zhFile = createDefaultRulesFile("zh");
+    const enFile = createDefaultRulesFile("en");
+    assert.equal(validateRulesFile(zhFile).valid, true);
+    assert.equal(validateRulesFile(enFile).valid, true);
+    assert.deepEqual(compileRules(enRules).compileErrors, []);
+
+    const hasCjk = /[\u4e00-\u9fff]/;
+    for (let i = 0; i < zhRules.length; i++) {
+      const zh = zhRules[i];
+      const en = enRules[i];
+      assert.equal(en.id, zh.id);
+      assert.equal(en.type, zh.type);
+      assert.equal(en.scope, zh.scope);
+      assert.equal(en.triggerMode, zh.triggerMode);
+      assert.equal(hasCjk.test(en.name), false, `English rule ${en.id} still has CJK in name: ${en.name}`);
+      assert.equal(hasCjk.test(en.group), false, `English rule ${en.id} still has CJK in group: ${en.group}`);
+      assert.ok(en.name.trim().length > 0, `English rule ${en.id} has empty name`);
+      assert.ok(en.group.trim().length > 0, `English rule ${en.id} has empty group`);
+
+      if (zh.type === "text" && en.type === "text") {
+        assert.equal(en.trigger, zh.trigger);
+        assert.equal(en.replacement, zh.replacement);
+      } else if (zh.type === "regex" && en.type === "regex") {
+        assert.equal(en.trigger, zh.trigger);
+        assert.equal(en.replacement, zh.replacement);
+      } else if (zh.type === "js" && en.type === "js") {
+        assert.equal(en.code, zh.code);
       }
     }
   });

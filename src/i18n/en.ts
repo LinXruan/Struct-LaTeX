@@ -59,7 +59,7 @@ export const EN_MESSAGES: I18nMessages = {
   "settings.about.license": "Open-Source License",
   "settings.about.licenseValue": "AGPL-3.0 (GNU Affero General Public License v3.0)",
   "settings.language.name": "Language",
-  "settings.language.desc": "Interface display language (follows Obsidian by default; does not change input rules)",
+  "settings.language.desc": "Interface display language (follows Obsidian by default; automatically switches default rules if rules.json is unmodified)",
   "settings.language.auto": "Follow Obsidian (Auto)",
   "settings.language.zh": "简体中文",
   "settings.language.en": "English",

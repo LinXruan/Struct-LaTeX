@@ -1,4 +1,6 @@
+import { Locale } from "../i18n/types";
 import { DEFAULT_JS_POST_RULES, DEFAULT_JS_PRE_RULES } from "./defaultJsRules";
+import { localizeDefaultRule } from "./defaultRuleLabels";
 import { GREEK_TEXT_RULES, SYMBOL_AND_ENV_TEXT_RULES } from "./defaultSymbolRules";
 import { InputRule, RegexInputRule, RulesFileData, TextInputRule } from "./types";
 
@@ -186,7 +188,7 @@ const CORE_STRUCTURE_TEXT_RULES: TextInputRule[] = [
   mathText("fn-id", "数学函数", "单位映射 id", "ide", "\\mathrm{id}", WB),
 ];
 
-export function createDefaultRules(): InputRule[] {
+export function createDefaultRules(locale: Locale = "zh"): InputRule[] {
   return [
     ...DEFAULT_JS_PRE_RULES,
     ...REGEX_CHAIN_ARROW_RULES,
@@ -195,12 +197,12 @@ export function createDefaultRules(): InputRule[] {
     ...SYMBOL_AND_ENV_TEXT_RULES,
     ...REGEX_PARAM_RULES,
     ...DEFAULT_JS_POST_RULES,
-  ].map((r) => JSON.parse(JSON.stringify(r)) as InputRule);
+  ].map((r) => localizeDefaultRule(r, locale));
 }
 
-export function createDefaultRulesFile(): RulesFileData {
+export function createDefaultRulesFile(locale: Locale = "zh"): RulesFileData {
   return {
     version: 1,
-    rules: createDefaultRules(),
+    rules: createDefaultRules(locale),
   };
 }

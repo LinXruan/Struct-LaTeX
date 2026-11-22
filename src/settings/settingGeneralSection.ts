@@ -11,6 +11,7 @@ export interface GeneralSettingsHost {
   settings: PluginSettings;
   saveSettings(): Promise<void>;
   syncLocale(): void;
+  onLanguageUpdated?: () => Promise<void>;
   onSpecialSettingsChanged?: () => void;
 }
 
@@ -44,7 +45,11 @@ export function renderLanguageSetting(
         .onChange(async (v) => {
           host.settings.language = v as LanguageSetting;
           await host.saveSettings();
-          host.syncLocale();
+          if (host.onLanguageUpdated) {
+            await host.onLanguageUpdated();
+          } else {
+            host.syncLocale();
+          }
           onLanguageChanged();
         })
     );
