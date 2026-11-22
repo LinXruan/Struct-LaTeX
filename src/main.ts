@@ -5,6 +5,7 @@ import { createSmartBackspaceExtension } from "./editor/smartBackspace";
 import { createSmartInputExtension } from "./editor/smartInput";
 import { createSmartJumpExtension } from "./editor/smartJump";
 import { resolveAppLocale, setLocale, t } from "./i18n";
+import { resolveFeatureKeybind } from "./input/keybindUtils";
 import { DEFAULT_PLUGIN_SETTINGS, PluginSettings } from "./input/types";
 import { RuleStore } from "./settings/ruleStore";
 import { StructLatexSettingTab } from "./settings/settingTab";
@@ -47,6 +48,16 @@ export default class StructLatexPlugin extends Plugin {
     }
 
     this.editorExtensions.push(
+      createSmartBackspaceExtension({
+        isEnabled: () => this.settings.smartBackspaceEnabled,
+        getKeybind: () => this.settings.smartBackspaceKey,
+        isMac: Platform.isMacOS,
+      }),
+      createSmartJumpExtension({
+        isEnabled: () => this.settings.smartJumpEnabled,
+        getKeybind: () => this.settings.smartJumpKey,
+        isMac: Platform.isMacOS,
+      }),
       createSmartInputExtension({
         isEnabled: () => this.settings.smartInputEnabled,
         getCompiledRules: () => this.ruleStore.getCompiled(),
@@ -59,9 +70,7 @@ export default class StructLatexPlugin extends Plugin {
             new Notice(t("notice.jsError", { name: rule.name, message }));
           }
         },
-      }),
-      createSmartBackspaceExtension(() => this.settings.smartBackspaceEnabled),
-      createSmartJumpExtension(() => this.settings.smartJumpEnabled)
+      })
     );
 
     this.registerEditorExtension(this.editorExtensions);
@@ -71,6 +80,14 @@ export default class StructLatexPlugin extends Plugin {
   async loadSettings(): Promise<void> {
     const loaded = (await this.loadData()) as Partial<PluginSettings> | null;
     this.settings = { ...DEFAULT_PLUGIN_SETTINGS, ...(loaded ?? {}) };
+    this.settings.smartBackspaceKey = resolveFeatureKeybind(
+      this.settings.smartBackspaceKey,
+      DEFAULT_PLUGIN_SETTINGS.smartBackspaceKey
+    );
+    this.settings.smartJumpKey = resolveFeatureKeybind(
+      this.settings.smartJumpKey,
+      DEFAULT_PLUGIN_SETTINGS.smartJumpKey
+    );
   }
 
   async saveSettings(): Promise<void> {

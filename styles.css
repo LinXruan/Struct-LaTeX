@@ -2,6 +2,57 @@
   display: none !important;
 }
 
+.struct-latex-category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.struct-latex-category-tab {
+  flex: 1 1 auto;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.struct-latex-category-tab.is-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.struct-latex-keybind-input {
+  width: 140px;
+  font-family: var(--font-monospace);
+}
+
+.struct-latex-field-error {
+  margin: -4px 0 10px;
+  padding: 6px 10px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--text-error);
+  color: var(--text-error);
+  font-size: 12px;
+}
+
+.struct-latex-hijack-note {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-s);
+  border-left: 3px solid var(--interactive-accent);
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
 .struct-latex-toolbar {
   display: flex;
   flex-wrap: wrap;

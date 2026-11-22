@@ -39,6 +39,9 @@ export interface I18nMessages {
   "store.readError": string;
   "store.saveRejected": string;
   "settings.title": string;
+  "settings.tab.input": string;
+  "settings.tab.delete": string;
+  "settings.tab.jump": string;
   "settings.language.name": string;
   "settings.language.desc": string;
   "settings.language.auto": string;
@@ -50,6 +53,14 @@ export interface I18nMessages {
   "settings.smartBackspace.desc": string;
   "settings.smartJump.name": string;
   "settings.smartJump.desc": string;
+  "settings.keybind.resetDefault": string;
+  "settings.keybind.invalid": string;
+  "settings.deleteKey.name": string;
+  "settings.deleteKey.desc": string;
+  "settings.deleteKey.hijackNote": string;
+  "settings.jumpKey.name": string;
+  "settings.jumpKey.desc": string;
+  "settings.jumpKey.hijackNote": string;
   "settings.dialect.name": string;
   "settings.dialect.desc": string;
   "settings.dialect.latex": string;

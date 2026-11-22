@@ -62,7 +62,9 @@ export interface PluginSettings {
   language: LanguageSetting;
   smartInputEnabled: boolean;
   smartBackspaceEnabled: boolean;
+  smartBackspaceKey: string;
   smartJumpEnabled: boolean;
+  smartJumpKey: string;
   outputDialect: OutputDialect;
 }
 
@@ -70,7 +72,9 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   language: "auto",
   smartInputEnabled: true,
   smartBackspaceEnabled: true,
+  smartBackspaceKey: "Backspace",
   smartJumpEnabled: true,
+  smartJumpKey: "Tab",
   outputDialect: "latex",
 };
 

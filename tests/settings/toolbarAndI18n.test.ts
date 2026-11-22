@@ -3,9 +3,9 @@ import { describe, it } from "node:test";
 import { getLocale, mapRawLanguageToLocale, resolveAppLocale, setLocale, t } from "../../src/i18n";
 import { EN_MESSAGES } from "../../src/i18n/en";
 import { ZH_MESSAGES } from "../../src/i18n/zh";
-import { formatTriggerBadge } from "../../src/input/keybindUtils";
+import { formatTriggerBadge, matchesKeyEventCombo, resolveFeatureKeybind } from "../../src/input/keybindUtils";
 import { evaluateRulePreview } from "../../src/input/previewEvaluator";
-import { InputRule, RuleType } from "../../src/input/types";
+import { DEFAULT_PLUGIN_SETTINGS, InputRule, RuleType } from "../../src/input/types";
 import { validateRule } from "../../src/input/validation";
 import { createDefaultFilterState, filterRules } from "../../src/settings/settingToolbar";
 
@@ -143,6 +143,11 @@ describe("I18n — Dictionary Parity, Obsidian Language Resolution & Localized M
 
       assert.equal(t("row.editBtn", undefined, "zh"), "编辑");
       assert.equal(t("row.editBtn", undefined, "en"), "Edit");
+      assert.equal(t("settings.tab.input", undefined, "zh"), "智能输入设置");
+      assert.equal(t("settings.tab.delete", undefined, "zh"), "结构删除设置");
+      assert.equal(t("settings.tab.jump", undefined, "zh"), "光标跳转设置");
+      assert.ok(t("settings.deleteKey.hijackNote", undefined, "zh").includes("按键输入劫持"));
+      assert.ok(t("settings.jumpKey.hijackNote", undefined, "en").includes("JavaScript"));
 
       assert.equal(
         formatTriggerBadge({
@@ -162,5 +167,35 @@ describe("I18n — Dictionary Parity, Obsidian Language Resolution & Localized M
     } finally {
       setLocale(prev);
     }
+  });
+});
+
+describe("Feature Keybind Matching & Plugin Settings Defaults", () => {
+  it("provides Backspace and Tab defaults and normalizes invalid keybinds safely", () => {
+    assert.equal(DEFAULT_PLUGIN_SETTINGS.smartBackspaceKey, "Backspace");
+    assert.equal(DEFAULT_PLUGIN_SETTINGS.smartJumpKey, "Tab");
+
+    assert.equal(resolveFeatureKeybind("alt+d", "Backspace"), "Alt+D");
+    assert.equal(resolveFeatureKeybind("shift+tab", "Tab"), "Shift+Tab");
+    assert.equal(resolveFeatureKeybind("", "Backspace"), "Backspace");
+    assert.equal(resolveFeatureKeybind("Shift+", "Tab"), "Tab");
+  });
+
+  it("matches keyboard events against configured delete/jump keybinds accurately", () => {
+    const baseEv = { ctrlKey: false, metaKey: false, altKey: false, shiftKey: false };
+
+    assert.equal(matchesKeyEventCombo({ ...baseEv, key: "Backspace" }, undefined, "Backspace"), true);
+    assert.equal(matchesKeyEventCombo({ ...baseEv, key: "Tab" }, undefined, "Tab"), true);
+    assert.equal(matchesKeyEventCombo({ ...baseEv, key: "Tab", shiftKey: true }, "Tab", "Tab"), false);
+    assert.equal(matchesKeyEventCombo({ ...baseEv, key: "Tab", shiftKey: true }, "shift+tab", "Tab"), true);
+
+    // Single printable key `o` matches `o` (blocking auto/JS rules) but not `Shift+O`
+    assert.equal(matchesKeyEventCombo({ ...baseEv, key: "o" }, "o", "Tab"), true);
+    assert.equal(matchesKeyEventCombo({ ...baseEv, key: "O", shiftKey: true }, "o", "Tab"), false);
+
+    // Platform Mod key handling (non-Mac Ctrl vs Mac Meta)
+    assert.equal(matchesKeyEventCombo({ ...baseEv, key: "j", ctrlKey: true }, "Mod+J", "Tab", false), true);
+    assert.equal(matchesKeyEventCombo({ ...baseEv, key: "j", metaKey: true }, "Mod+J", "Tab", true), true);
+    assert.equal(matchesKeyEventCombo({ ...baseEv, key: "j", ctrlKey: true }, "Mod+J", "Tab", true), false);
   });
 });

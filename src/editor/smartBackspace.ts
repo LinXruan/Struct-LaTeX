@@ -1,8 +1,15 @@
 import { isolateHistory } from "@codemirror/commands";
-import { Extension, Prec } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import { Extension } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import { resolveStructuralDelete } from "../parser/deleteResolver";
+import { createKeybindHijackExtension } from "./keybindHijack";
 import { findEmptyMathBlockDeleteSpan, getAnalyzedMathBlock } from "./mathRegion";
+
+export interface SmartBackspaceOptions {
+  isEnabled?: () => boolean;
+  getKeybind?: () => string;
+  isMac?: boolean;
+}
 
 function dispatchAtomicDelete(view: EditorView, from: number, to: number): boolean {
   view.dispatch({
@@ -14,8 +21,7 @@ function dispatchAtomicDelete(view: EditorView, from: number, to: number): boole
   return true;
 }
 
-function handleSmartBackspace(view: EditorView, isEnabled: () => boolean): boolean {
-  if (!isEnabled()) return false;
+function handleSmartBackspace(view: EditorView): boolean {
   const { state } = view;
   if (state.readOnly || view.composing) return false;
   if (state.selection.ranges.length > 1) return false;
@@ -46,13 +52,12 @@ function handleSmartBackspace(view: EditorView, isEnabled: () => boolean): boole
   );
 }
 
-export function createSmartBackspaceExtension(isEnabled: () => boolean = () => true): Extension {
-  return Prec.highest(
-    keymap.of([
-      {
-        key: "Backspace",
-        run: (view) => handleSmartBackspace(view, isEnabled),
-      },
-    ])
-  );
+export function createSmartBackspaceExtension(options: SmartBackspaceOptions = {}): Extension {
+  return createKeybindHijackExtension({
+    isEnabled: options.isEnabled ?? (() => true),
+    getKeybind: options.getKeybind ?? (() => "Backspace"),
+    defaultKeybind: "Backspace",
+    isMac: options.isMac,
+    run: handleSmartBackspace,
+  });
 }

@@ -1,8 +1,15 @@
 import { isolateHistory } from "@codemirror/commands";
-import { EditorState, Extension, Prec } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import { EditorState, Extension } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import { resolveStructuralJump } from "../parser/jumpResolver";
+import { createKeybindHijackExtension } from "./keybindHijack";
 import { getAnalyzedMathBlock, MathRegion } from "./mathRegion";
+
+export interface SmartJumpOptions {
+  isEnabled?: () => boolean;
+  getKeybind?: () => string;
+  isMac?: boolean;
+}
 
 type JumpAction =
   | { kind: "move"; anchor: number }
@@ -63,8 +70,7 @@ function dispatchJumpAction(view: EditorView, action: JumpAction): boolean {
   return true;
 }
 
-function handleSmartTab(view: EditorView, isEnabled: () => boolean): boolean {
-  if (!isEnabled()) return false;
+function handleSmartJump(view: EditorView): boolean {
   const { state } = view;
   if (state.readOnly || view.composing) return false;
   if (state.selection.ranges.length > 1) return false;
@@ -92,13 +98,12 @@ function handleSmartTab(view: EditorView, isEnabled: () => boolean): boolean {
   return dispatchJumpAction(view, exitAction);
 }
 
-export function createSmartJumpExtension(isEnabled: () => boolean = () => true): Extension {
-  return Prec.highest(
-    keymap.of([
-      {
-        key: "Tab",
-        run: (view) => handleSmartTab(view, isEnabled),
-      },
-    ])
-  );
+export function createSmartJumpExtension(options: SmartJumpOptions = {}): Extension {
+  return createKeybindHijackExtension({
+    isEnabled: options.isEnabled ?? (() => true),
+    getKeybind: options.getKeybind ?? (() => "Tab"),
+    defaultKeybind: "Tab",
+    isMac: options.isMac,
+    run: handleSmartJump,
+  });
 }

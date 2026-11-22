@@ -148,6 +148,21 @@ export function keyboardEventToCombo(ev: KeyEventLike, isMac = false): string | 
   return mods.length > 0 ? `${mods.join("+")}+${mainKey}` : mainKey;
 }
 
+export function resolveFeatureKeybind(raw: string | undefined, defaultKey: string): string {
+  return normalizeKeyCombo(raw ?? "") ?? defaultKey;
+}
+
+export function matchesKeyEventCombo(
+  ev: KeyEventLike,
+  configuredKey: string | undefined,
+  defaultKey: string,
+  isMac = false
+): boolean {
+  const target = resolveFeatureKeybind(configuredKey, defaultKey);
+  const pressed = keyboardEventToCombo(ev, isMac);
+  return pressed !== null && pressed === target;
+}
+
 export function formatTriggerBadge(rule: InputRule): string {
   if (rule.triggerMode === "auto") return "Auto";
   if (rule.triggerMode === "confirm") {
