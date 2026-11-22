@@ -72,7 +72,7 @@ function movePlaceholderWithFlip(
   for (const item of moved) {
     item.el.classList.remove("struct-latex-flip-none");
     item.el.classList.add("struct-latex-flip-animate");
-    item.el.style.transform = "";
+    item.el.style.removeProperty("transform");
   }
 }
 
@@ -235,7 +235,7 @@ export function attachPointerDragSort(
       const siblings = getOrderedRuleSiblings(listEl, row);
       for (const sib of siblings) {
         sib.classList.remove("struct-latex-flip-none", "struct-latex-flip-animate");
-        sib.style.transform = "";
+        sib.style.removeProperty("transform");
       }
 
       const adj = placeholder ? findAdjacentIds(placeholder, row) : { beforeId: null, afterId: null };

@@ -1,7 +1,7 @@
 {
   "id": "struct-latex",
   "name": "Struct LaTeX",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minAppVersion": "1.4.0",
   "description": "Structure-aware LaTeX editing.",
   "author": "LinXruan",

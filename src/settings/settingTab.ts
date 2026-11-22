@@ -276,7 +276,7 @@ export class StructLatexSettingTab extends PluginSettingTab {
     this.subPageEl = containerEl.createDiv({ cls: "struct-latex-subpage-view struct-latex-hidden" });
     this.editorViewEl = containerEl.createDiv({ cls: "struct-latex-hidden" });
 
-    this.homeViewEl.createEl("h2", { text: t("settings.title") });
+    new Setting(this.homeViewEl).setName(t("settings.title")).setHeading();
     renderSettingsHomePage(this.homeViewEl, this.host, {
       onLanguageChanged: () => this.display(),
       onOpenPage: (page) => this.openSubPage(page),
