@@ -14,21 +14,22 @@
   <img src="https://img.shields.io/badge/License-AGPL--3.0-2ea44f?style=flat-square" alt="License" />
 </p>
 
-**Obsidian 结构化 LaTeX 编辑插件**，基于语法结构树而非正则表达式理解数学公式
+<p align="center">
+  <strong>English</strong> · <a href="README.zh.md">简体中文</a>
+</p>
 
-> 仅在数学公式区域生效，支持任意深度嵌套，不干扰正文写作与中文输入法。
+**A powerful LaTeX editing plugin for Obsidian**, powered by a **parse tree** instead of regex.
 
-## 功能
-- **一键智能删除**：整块删除**矩阵、分式、根式、上下标、括号、函数**，不留下残缺花括号
-- **无限深度嵌套**：完整识别 `\left...\right`（含非对称与单边定界符）、任意 `\begin{...}\end{...}` 环境、`\frac` / `\sqrt` 等多参命令、普通与 Unicode 括号及复合对齐换行符
-- **自动光标跳转**：智能跳转（`Tab` / `o` 逐层跳出）
-- **自动快捷输入**：支持所有快捷输入指令
+> Active only inside math regions, supporting arbitrary nesting depth without interfering with prose writing or IME input.
 
-## 亮点
-- **非正则引擎**：告别数百条嵌套正则的规则冲突与层数上限，复杂嵌套公式同样稳定准确
-- **轻量极速**：仅在触发时局部解析当前公式块，响应低于 0.1 ms，无任何外部依赖
-- **移动端也可用**：支持 Obsidian 1.4.0 及以上，覆盖桌面端与移动端
+## Features
+- **Structural Deletion**: Delete matrices, fractions, radicals, scripts, brackets, and functions as complete units along the **parse tree hierarchy**
+- **Smart Cursor Jumping**: Jump the cursor intelligently along the **parse tree hierarchy**
+- **Smart Input**: Supports **JavaScript API, regex, and plain text replacement**
 
-## 安装
-
-从 [Releases](https://github.com/LinXruan/Struct-LaTeX/releases) 下载最新版本的 `main.js` 与 `manifest.json`，放入仓库的 `.obsidian/plugins/struct-latex/` 目录后，在 Obsidian **设置 → 第三方插件**中启用即可。
+## Highlights
+- **Parse Tree Engine**: Say goodbye to rule conflicts and depth limits of hundreds of nested regexes, achieving **infinite nesting depth**
+- **Mobile Ready**: Supports Obsidian 1.4.0 and above
+- **Comprehensive Built-in Rules**: Covers nearly all common mathematical input workflows
+- **JavaScript API**: Enables highly extensible, complex editing behaviors
+- **Lightweight & Fast**: Locally parses only the active math block with sub-0.1 ms response time
