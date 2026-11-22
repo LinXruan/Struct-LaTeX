@@ -143,9 +143,11 @@ describe("I18n — Dictionary Parity, Obsidian Language Resolution & Localized M
 
       assert.equal(t("row.editBtn", undefined, "zh"), "编辑");
       assert.equal(t("row.editBtn", undefined, "en"), "Edit");
-      assert.equal(t("settings.tab.input", undefined, "zh"), "智能输入设置");
-      assert.equal(t("settings.tab.delete", undefined, "zh"), "结构删除设置");
-      assert.equal(t("settings.tab.jump", undefined, "zh"), "光标跳转设置");
+      assert.equal(t("settings.nav.input", undefined, "zh"), "智能输入");
+      assert.equal(t("settings.nav.delete", undefined, "zh"), "结构删除");
+      assert.equal(t("settings.nav.jump", undefined, "zh"), "光标跳转");
+      assert.equal(t("settings.nav.special", undefined, "zh"), "特殊设置");
+      assert.equal(t("settings.nav.about", undefined, "zh"), "关于");
       assert.ok(t("settings.deleteKey.hijackNote", undefined, "zh").includes("按键输入劫持"));
       assert.ok(t("settings.jumpKey.hijackNote", undefined, "en").includes("JavaScript"));
 

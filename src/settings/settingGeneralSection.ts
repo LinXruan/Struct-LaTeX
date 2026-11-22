@@ -4,7 +4,8 @@ import { keyboardEventToCombo, normalizeKeyCombo, resolveFeatureKeybind } from "
 import { DEFAULT_PLUGIN_SETTINGS, OutputDialect, PluginSettings } from "../input/types";
 import { attachKeyRecorder } from "./ruleInlinePanels";
 
-export type SettingsCategory = "input" | "delete" | "jump";
+export type SettingsSubPage = "input" | "delete" | "jump" | "special" | "about";
+export type SettingsPage = "home" | SettingsSubPage;
 
 export interface GeneralSettingsHost {
   settings: PluginSettings;
@@ -48,38 +49,40 @@ export function renderLanguageSetting(
     );
 }
 
-export function renderCategoryTabs(
+export function renderSettingsHomePage(
   parent: HTMLElement,
-  active: SettingsCategory,
-  onSelect: (category: SettingsCategory) => void
-): (nextActive: SettingsCategory) => void {
-  const bar = parent.createDiv({ cls: "struct-latex-category-tabs" });
-  bar.setAttr("role", "tablist");
+  host: GeneralSettingsHost,
+  callbacks: {
+    onLanguageChanged: () => void;
+    onOpenPage: (page: SettingsSubPage) => void;
+  }
+): void {
+  renderLanguageSetting(parent, host, callbacks.onLanguageChanged);
 
-  const items: Array<{ id: SettingsCategory; label: string }> = [
-    { id: "input", label: t("settings.tab.input") },
-    { id: "delete", label: t("settings.tab.delete") },
-    { id: "jump", label: t("settings.tab.jump") },
+  const navItems: Array<{ page: SettingsSubPage; name: string; desc: string }> = [
+    { page: "input", name: t("settings.nav.input"), desc: t("settings.nav.inputDesc") },
+    { page: "delete", name: t("settings.nav.delete"), desc: t("settings.nav.deleteDesc") },
+    { page: "jump", name: t("settings.nav.jump"), desc: t("settings.nav.jumpDesc") },
+    { page: "special", name: t("settings.nav.special"), desc: t("settings.nav.specialDesc") },
+    { page: "about", name: t("settings.nav.about"), desc: t("settings.nav.aboutDesc") },
   ];
 
-  const buttons = new Map<SettingsCategory, HTMLButtonElement>();
-  const syncActive = (current: SettingsCategory) => {
-    for (const [id, btn] of buttons) {
-      const isCurrent = id === current;
-      btn.toggleClass("is-active", isCurrent);
-      btn.setAttr("aria-selected", isCurrent ? "true" : "false");
-    }
-  };
-
-  for (const item of items) {
-    const btn = bar.createEl("button", { cls: "struct-latex-category-tab", text: item.label });
-    btn.setAttr("role", "tab");
-    btn.addEventListener("click", () => onSelect(item.id));
-    buttons.set(item.id, btn);
+  for (const item of navItems) {
+    new Setting(parent)
+      .setName(item.name)
+      .setDesc(item.desc)
+      .addButton((btn) =>
+        btn.setButtonText(t("settings.nav.openBtn")).onClick(() => callbacks.onOpenPage(item.page))
+      );
   }
+}
 
-  syncActive(active);
-  return syncActive;
+export function renderSubPageHeader(parent: HTMLElement, title: string, onBack: () => void): void {
+  const header = parent.createDiv({ cls: "struct-latex-subpage-header" });
+  header
+    .createEl("button", { cls: "struct-latex-editor-back-btn", text: t("settings.nav.backHome") })
+    .addEventListener("click", onBack);
+  header.createEl("h3", { cls: "struct-latex-editor-title", text: title });
 }
 
 export function renderSmartInputSettings(

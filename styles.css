@@ -2,30 +2,58 @@
   display: none !important;
 }
 
-.struct-latex-category-tabs {
+.struct-latex-subpage-header,
+.struct-latex-editor-header {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
-  margin: 4px 0 14px;
-  padding-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.struct-latex-category-tab {
-  flex: 1 1 auto;
-  min-height: 32px;
-  padding: 6px 12px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-s);
-  font-weight: 500;
-  white-space: nowrap;
-  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+.struct-latex-special-placeholder {
+  padding: 14px 16px;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
 }
 
-.struct-latex-category-tab.is-active {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-  border-color: var(--interactive-accent);
+.struct-latex-special-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.struct-latex-special-body {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.struct-latex-about-logo {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 18px;
+}
+
+.struct-latex-about-logo svg {
+  width: min(300px, 100%);
+  height: auto;
+}
+
+.struct-latex-logo-text {
+  fill: var(--text-normal);
+}
+
+.struct-latex-logo-brace {
+  fill: #7c3aed;
+}
+
+body.theme-dark .struct-latex-logo-brace {
+  fill: #a78bfa;
 }
 
 .struct-latex-keybind-input {
@@ -339,22 +367,15 @@ body.struct-latex-is-dragging {
   gap: 4px;
 }
 
-.struct-latex-editor-header {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--background-modifier-border);
-}
-
 .struct-latex-editor-back-btn {
   white-space: nowrap;
 }
 
-.struct-latex-editor-title {
-  margin: 0;
+.struct-latex-subpage-header .struct-latex-editor-title,
+.struct-latex-editor-header .struct-latex-editor-title {
+  margin: 0 !important;
+  padding: 0;
+  line-height: 1.25;
 }
 
 .struct-latex-editor-footer {
