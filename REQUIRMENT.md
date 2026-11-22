@@ -37,7 +37,7 @@
 1. **统一接口与严格校验**：三类规则统一存储于插件目录 `rules.json`；任何缺触发头、缺替换效果、无效正则或 JS 语法错误一律禁止落盘。
 2. **结构感知上下文（`InputRuleContext`）**：JS 规则直接复用 `MathTree`（含 `prevObject`、`currentSlot`、`inTextMode`、`inCommandTyping`、`inEnvName` 与 `helpers.isKnownCommand` / `isCommandPrefix`），全程 `try/catch` 异常隔离。
 3. **三档输出Unicode转换层（`dialectConverter.ts`）**：基于 `tokenizeMath` 在输出落盘前完成词法级转换与 UTF-16 精确光标偏移重映射，保护 `\left`/`\right` 定界符、`\begin`/`\end`、`\text{}` 与 `\bigcup`/`\bigcap`，链式箭头（`<->` / `<=>` / `<==`）跨方言无缝兼容。
-4. **设置面板与 MathJax 预览**：每行统一「拖拽排序 + 1 启停开关 + 2 按钮（编辑/绑键、删除）+ 右侧懒渲染 MathJax 预览」；纯替换支持行内编辑，正则与 JS 点开专属弹窗编辑（JS 内置多行编辑与实时示例试跑沙盒）。
+4. **设置面板与 MathJax 预览**：支持「跟随 Obsidian / 简体中文 / English」实时语言切换、复合筛选（搜索 + 分组 + 类型下拉框 + 可并列点亮 `JS`/`正则`/`纯替换` 按钮）、Pointer Events 半透明让位拖拽排序、行级 DOM 复用与分帧缓存 MathJax 预览；每行统一「拖拽排序 + 类型与触发徽章 + 1 启停开关 + 2 按钮（编辑/绑键、删除）+ 右侧懒渲染 MathJax 预览」；纯替换支持行内编辑，正则与 JS 点开专属弹窗编辑（JS 内置多行编辑与实时示例试跑沙盒）。
 
 ### 2.2 官方默认规则概览（全 `auto`、零前缀冲突）
 - **JavaScript 规则（9 条）**：`js-math-delim`（`$` / `￥` 按前字补空格成对生成、空 `$|$` 升级 `$$\n|\n$$`，跳过代码块/YAML/转义 `\$`）、`js-bold-greek`（`;;<ch>`）、`js-font-bb`（`bb<L>` 自动大写 `\mathbb`）、`js-font-cal`（`cal<L>` 自动大写 `\mathcal`）、`js-big-op-5mode`（`sm`/`pd`/`bu`/`bn` 五模式）、`js-integral`（`it` 五模式）、`js-limit`（`lm` 五模式）、`js-eval-bar`（`er|`/`el|` 族）与 `js-cmd-space`（命令后防打断补空格，绝不打断 `\left` / `\sinh`）。

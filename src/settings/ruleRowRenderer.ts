@@ -1,9 +1,11 @@
 import { setIcon, ToggleComponent } from "obsidian";
+import { t } from "../i18n";
 import { formatTriggerBadge } from "../input/keybindUtils";
 import { evaluateRulePreview } from "../input/ruleEngine";
 import { InputRule, OutputDialect, TextInputRule } from "../input/types";
 import { cloneRule, validateRule } from "../input/validation";
 import { LazyMathPreviewManager } from "./mathPreview";
+import { attachPointerDragSort, ReorderCallback } from "./ruleDragSort";
 
 export interface RuleRowCallbacks {
   getDialect: () => OutputDialect;
@@ -12,7 +14,7 @@ export interface RuleRowCallbacks {
   onToggleEnabled: (rule: InputRule, enabled: boolean) => Promise<void>;
   onOpenEditModal: (rule: InputRule) => void;
   onDeleteRule: (rule: InputRule, isNewDraft: boolean) => Promise<void>;
-  onReorderRule: (draggedId: string, targetId: string) => Promise<void>;
+  onReorderRule: ReorderCallback;
 }
 
 export function renderRuleRow(
@@ -27,32 +29,10 @@ export function renderRuleRow(
 
   // Drag handle (not a button)
   const handle = row.createSpan({ cls: "struct-latex-drag-handle", text: "⋮⋮" });
-  handle.setAttr("title", "拖拽调整匹配顺序");
-  handle.draggable = !isNewDraft;
+  handle.setAttr("title", t("row.dragTitle"));
 
   if (!isNewDraft) {
-    handle.addEventListener("dragstart", (ev) => {
-      ev.dataTransfer?.setData("text/plain", rule.id);
-      row.addClass("struct-latex-dragging");
-    });
-    handle.addEventListener("dragend", () => {
-      row.removeClass("struct-latex-dragging");
-    });
-    row.addEventListener("dragover", (ev) => {
-      ev.preventDefault();
-      row.addClass("struct-latex-drag-over");
-    });
-    row.addEventListener("dragleave", () => {
-      row.removeClass("struct-latex-drag-over");
-    });
-    row.addEventListener("drop", (ev) => {
-      ev.preventDefault();
-      row.removeClass("struct-latex-drag-over");
-      const draggedId = ev.dataTransfer?.getData("text/plain");
-      if (draggedId && draggedId !== rule.id) {
-        void callbacks.onReorderRule(draggedId, rule.id);
-      }
-    });
+    attachPointerDragSort(handle, row, rule.id, callbacks.onReorderRule);
   }
 
   const left = row.createDiv({ cls: "struct-latex-rule-left" });
@@ -65,20 +45,22 @@ export function renderRuleRow(
     const check = validateRule(localDraft);
     if (check.valid) {
       row.removeClass("struct-latex-rule-invalid");
-      row.removeAttribute("data-error");
+      row.removeAttribute("title");
       return true;
     }
     row.addClass("struct-latex-rule-invalid");
-    row.setAttr("title", check.errors[0] ?? "规则不完整");
+    row.setAttr("title", check.errors[0] ?? t("row.invalidDefault"));
     return false;
   };
 
   if (localDraft.type === "text") {
     let committed = !isNewDraft;
+    const defaultDraftName = t("draft.textName");
     const trigInput = left.createEl("input", {
       type: "text",
       cls: "struct-latex-inline-input struct-latex-inline-trigger",
-      placeholder: localDraft.triggerMode === "hotkey" ? "触发词 (快捷键模式可留空)" : "触发词 (必填)",
+      placeholder:
+        localDraft.triggerMode === "hotkey" ? t("row.triggerHotkeyPlaceholder") : t("row.triggerPlaceholder"),
     });
     trigInput.value = localDraft.trigger;
 
@@ -87,9 +69,14 @@ export function renderRuleRow(
     const repInput = left.createEl("input", {
       type: "text",
       cls: "struct-latex-inline-input struct-latex-inline-replace",
-      placeholder: "替换内容 ($0 表光标，必填)",
+      placeholder: t("row.replacePlaceholder"),
     });
     repInput.value = localDraft.replacement;
+
+    left.createSpan({
+      cls: "struct-latex-badge is-type-text",
+      text: t("badge.type.text"),
+    });
 
     const badge = left.createSpan({
       cls: "struct-latex-badge",
@@ -119,7 +106,7 @@ export function renderRuleRow(
       const textDraft = localDraft as TextInputRule;
       textDraft.trigger = trigInput.value;
       textDraft.replacement = repInput.value;
-      if (textDraft.name === "新纯替换规则" && textDraft.trigger.trim()) {
+      if (textDraft.name === defaultDraftName && textDraft.trigger.trim()) {
         textDraft.name = textDraft.trigger.trim();
       }
       if (syncInlineValidity()) {
@@ -152,7 +139,7 @@ export function renderRuleRow(
     titleRow.createSpan({ cls: "struct-latex-rule-name", text: localDraft.name });
     titleRow.createSpan({
       cls: `struct-latex-badge is-type-${localDraft.type}`,
-      text: localDraft.type === "regex" ? "正则" : "JS",
+      text: localDraft.type === "regex" ? t("badge.type.regex") : t("badge.type.js"),
     });
     titleRow.createSpan({
       cls: `struct-latex-badge${localDraft.triggerMode === "auto" ? " is-auto" : ""}`,
@@ -162,7 +149,9 @@ export function renderRuleRow(
     const summary =
       localDraft.type === "regex"
         ? `${localDraft.trigger}  →  ${localDraft.replacement}`
-        : `分组: ${localDraft.group}${localDraft.exampleInput ? ` · 示例: ${localDraft.exampleInput}` : ""}`;
+        : `${t("row.summaryGroup", { group: localDraft.group })}${
+            localDraft.exampleInput ? t("row.summarySample", { sample: localDraft.exampleInput }) : ""
+          }`;
     left.createDiv({ cls: "struct-latex-rule-summary", text: summary });
   }
 
@@ -173,10 +162,10 @@ export function renderRuleRow(
   // Strictly 1 toggle + 2 buttons per row
   const toggle = new ToggleComponent(actions);
   toggle.setValue(localDraft.enabled);
-  toggle.setTooltip(localDraft.enabled ? "已启用" : "已禁用");
+  toggle.setTooltip(localDraft.enabled ? t("row.enabled") : t("row.disabled"));
   toggle.onChange(async (val) => {
     localDraft.enabled = val;
-    toggle.setTooltip(val ? "已启用" : "已禁用");
+    toggle.setTooltip(val ? t("row.enabled") : t("row.disabled"));
     if (!isNewDraft || validateRule(localDraft).valid) {
       await callbacks.onToggleEnabled(localDraft, val);
     }
@@ -184,14 +173,16 @@ export function renderRuleRow(
 
   const editBtn = actions.createEl("button", { cls: "clickable-icon struct-latex-row-btn" });
   setIcon(editBtn, localDraft.type === "text" ? "sliders-horizontal" : localDraft.type === "regex" ? "pencil" : "code-2");
-  editBtn.setAttr("aria-label", localDraft.type === "text" ? "绑键与高级设置" : "编辑规则");
-  editBtn.setAttr("title", localDraft.type === "text" ? "绑键与高级设置" : "编辑规则");
+  const editLabel = localDraft.type === "text" ? t("row.editKeybindTitle") : t("row.editRuleTitle");
+  editBtn.setAttr("aria-label", editLabel);
+  editBtn.setAttr("title", editLabel);
   editBtn.addEventListener("click", () => callbacks.onOpenEditModal(localDraft));
 
   const delBtn = actions.createEl("button", { cls: "clickable-icon struct-latex-row-btn struct-latex-del-btn" });
   setIcon(delBtn, "trash-2");
-  delBtn.setAttr("aria-label", "删除规则");
-  delBtn.setAttr("title", "删除规则");
+  const delLabel = t("row.deleteRuleTitle");
+  delBtn.setAttr("aria-label", delLabel);
+  delBtn.setAttr("title", delLabel);
   delBtn.addEventListener("click", () => void callbacks.onDeleteRule(localDraft, isNewDraft));
 
   return row;

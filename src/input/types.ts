@@ -1,3 +1,4 @@
+import { LanguageSetting } from "../i18n/types";
 import { LatexObject, MathTree, Slot } from "../parser/types";
 
 export type RuleType = "text" | "regex" | "js";
@@ -58,6 +59,7 @@ export interface RulesFileData {
 }
 
 export interface PluginSettings {
+  language: LanguageSetting;
   smartInputEnabled: boolean;
   smartBackspaceEnabled: boolean;
   smartJumpEnabled: boolean;
@@ -65,6 +67,7 @@ export interface PluginSettings {
 }
 
 export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
+  language: "auto",
   smartInputEnabled: true,
   smartBackspaceEnabled: true,
   smartJumpEnabled: true,

@@ -13,8 +13,29 @@
 .struct-latex-io-bar {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   margin-bottom: 12px;
+}
+
+.struct-latex-type-filter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+}
+
+.struct-latex-type-toggle {
+  opacity: 0.58;
+  border: 1px solid var(--background-modifier-border);
+  transition: opacity 120ms ease, background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.struct-latex-type-toggle.is-active {
+  opacity: 1;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
 }
 
 .struct-latex-rule-list {
@@ -25,7 +46,7 @@
 
 .struct-latex-rule-row {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) minmax(90px, 180px) auto;
+  grid-template-columns: 22px minmax(0, 1fr) minmax(90px, 180px) auto;
   align-items: center;
   gap: 10px;
   padding: 8px 10px;
@@ -43,20 +64,44 @@
   background: color-mix(in srgb, var(--text-error) 8%, var(--background-secondary));
 }
 
-.struct-latex-rule-row.struct-latex-drag-over {
-  border-top: 2px solid var(--interactive-accent);
+body.struct-latex-is-dragging {
+  cursor: grabbing !important;
+  user-select: none !important;
 }
 
-.struct-latex-rule-row.struct-latex-dragging {
-  opacity: 0.45;
+.struct-latex-drag-ghost {
+  position: fixed;
+  z-index: 9999;
+  margin: 0 !important;
+  opacity: 0.78;
+  pointer-events: none;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
+  border-color: var(--interactive-accent);
+  background: var(--background-secondary);
+}
+
+.struct-latex-drop-placeholder {
+  border: 2px dashed var(--interactive-accent);
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+  box-sizing: border-box;
+  transition: height 120ms ease;
 }
 
 .struct-latex-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
   cursor: grab;
   color: var(--text-faint);
   user-select: none;
-  text-align: center;
+  touch-action: none;
   font-size: 13px;
+}
+
+.struct-latex-drag-handle:hover {
+  color: var(--text-normal);
 }
 
 .struct-latex-rule-left {
@@ -118,6 +163,10 @@
   background: var(--background-modifier-hover);
   color: var(--text-muted);
   white-space: nowrap;
+}
+
+.struct-latex-badge.is-type-text {
+  color: var(--color-green);
 }
 
 .struct-latex-badge.is-type-regex {

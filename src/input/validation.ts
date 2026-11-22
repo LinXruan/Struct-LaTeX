@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { isValidConfirmKey, normalizeHotkey } from "./keybindUtils";
 import { InputRule, RulesFileData, ValidationResult } from "./types";
 
@@ -17,20 +18,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function validateRule(raw: unknown): ValidationResult {
   const errors: string[] = [];
   if (!isRecord(raw)) {
-    return { valid: false, errors: ["规则必须是对象"] };
+    return { valid: false, errors: [t("val.ruleObject")] };
   }
 
   if (typeof raw.id !== "string" || raw.id.trim().length === 0) {
-    errors.push("规则缺少有效 ID");
+    errors.push(t("val.missingId"));
   }
   if (typeof raw.type !== "string" || !VALID_TYPES.has(raw.type)) {
-    errors.push("规则类型必须是 text、regex 或 js");
+    errors.push(t("val.invalidType"));
   }
   if (typeof raw.scope !== "string" || !VALID_SCOPES.has(raw.scope)) {
-    errors.push("作用域必须是 math、text 或 any");
+    errors.push(t("val.invalidScope"));
   }
   if (typeof raw.triggerMode !== "string" || !VALID_MODES.has(raw.triggerMode)) {
-    errors.push("触发方式必须是 auto、confirm 或 hotkey");
+    errors.push(t("val.invalidMode"));
   }
 
   const triggerMode = raw.triggerMode;
@@ -38,11 +39,11 @@ export function validateRule(raw: unknown): ValidationResult {
 
   if (triggerMode === "confirm") {
     if (typeof raw.confirmKey !== "string" || !isValidConfirmKey(raw.confirmKey)) {
-      errors.push("确认键模式必须指定有效的确认按键（如 Space / Tab / Enter）");
+      errors.push(t("val.invalidConfirmKey"));
     }
   } else if (triggerMode === "hotkey") {
     if (typeof raw.hotkey !== "string" || normalizeHotkey(raw.hotkey) === null) {
-      errors.push("快捷键模式必须绑定有效的组合键或二段连按");
+      errors.push(t("val.invalidHotkey"));
     }
   }
 
@@ -50,10 +51,10 @@ export function validateRule(raw: unknown): ValidationResult {
     const trigger = typeof raw.trigger === "string" ? raw.trigger : "";
     const replacement = typeof raw.replacement === "string" ? raw.replacement : "";
     if (triggerMode !== "hotkey" && trigger.length === 0) {
-      errors.push("纯替换规则的触发词不能为空");
+      errors.push(t("val.textEmptyTrigger"));
     }
     if (replacement.length === 0) {
-      errors.push("纯替换规则的替换内容不能为空");
+      errors.push(t("val.textEmptyReplace"));
     }
   } else if (type === "regex") {
     const trigger = typeof raw.trigger === "string" ? raw.trigger : "";
@@ -61,33 +62,33 @@ export function validateRule(raw: unknown): ValidationResult {
     const flags = raw.flags === undefined ? "" : raw.flags;
 
     if (triggerMode !== "hotkey" && trigger.length === 0) {
-      errors.push("正则规则的匹配模式不能为空");
+      errors.push(t("val.regexEmptyTrigger"));
     }
     if (replacement.length === 0) {
-      errors.push("正则规则的替换模板不能为空");
+      errors.push(t("val.regexEmptyReplace"));
     }
     if (typeof flags !== "string" || !VALID_REGEX_FLAGS.test(flags)) {
-      errors.push("正则标志仅支持 i / u / s（禁止使用带状态的 g / y）");
+      errors.push(t("val.regexInvalidFlags"));
     } else if (trigger.length > 0) {
       try {
         new RegExp(`(?:${trigger})$`, flags);
       } catch (err) {
-        errors.push(`正则表达式语法错误: ${(err as Error).message}`);
+        errors.push(t("val.regexSyntax", { msg: (err as Error).message }));
       }
     }
   } else if (type === "js") {
     const name = typeof raw.name === "string" ? raw.name : "";
     const code = typeof raw.code === "string" ? raw.code : "";
     if (name.trim().length === 0) {
-      errors.push("JavaScript 规则名称不能为空");
+      errors.push(t("val.jsEmptyName"));
     }
     if (code.trim().length === 0) {
-      errors.push("JavaScript 规则代码不能为空");
+      errors.push(t("val.jsEmptyCode"));
     } else {
       try {
         new Function("ctx", code);
       } catch (err) {
-        errors.push(`JavaScript 语法错误: ${(err as Error).message}`);
+        errors.push(t("val.jsSyntax", { msg: (err as Error).message }));
       }
     }
   }
@@ -100,13 +101,13 @@ export function validateRule(raw: unknown): ValidationResult {
  */
 export function validateRulesFile(raw: unknown): ValidationResult {
   if (!isRecord(raw)) {
-    return { valid: false, errors: ["rules.json 根节点必须是对象"] };
+    return { valid: false, errors: [t("val.fileRoot")] };
   }
   if (raw.version !== 1) {
-    return { valid: false, errors: ["rules.json version 必须为 1"] };
+    return { valid: false, errors: [t("val.fileVersion")] };
   }
   if (!Array.isArray(raw.rules)) {
-    return { valid: false, errors: ["rules.json 必须包含 rules 数组"] };
+    return { valid: false, errors: [t("val.fileRulesArray")] };
   }
 
   const errors: string[] = [];
@@ -118,12 +119,12 @@ export function validateRulesFile(raw: unknown): ValidationResult {
     if (!res.valid) {
       const label = isRecord(item) && typeof item.id === "string" && item.id ? item.id : `#${i + 1}`;
       for (const msg of res.errors) {
-        errors.push(`规则 [${label}]: ${msg}`);
+        errors.push(t("val.rulePrefix", { label, msg }));
       }
     }
     if (isRecord(item) && typeof item.id === "string" && item.id.trim().length > 0) {
       if (seenIds.has(item.id)) {
-        errors.push(`存在重复规则 ID: ${item.id}`);
+        errors.push(t("val.duplicateId", { id: item.id }));
       }
       seenIds.add(item.id);
     }

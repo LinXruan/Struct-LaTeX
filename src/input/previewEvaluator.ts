@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { buildMathTree } from "../parser/builder";
 import { buildRuleContext, expandTemplate } from "./contextBuilder";
 import { convertOutputDialect } from "./dialectConverter";
@@ -51,9 +52,17 @@ function formatTexForMathJax(rawTex: string): string {
   return tex;
 }
 
-function toCanonicalLatex(text: string, rule: InputRule, inMath: boolean): string {
-  if (rule.skipDialect || !inMath) return text;
-  return convertOutputDialect(text, text.length, "latex").insert;
+function toCanonicalLatex(
+  rawSource: string,
+  convertedText: string,
+  rule: InputRule,
+  inMath: boolean,
+  dialect: OutputDialect
+): string {
+  if (rule.skipDialect || !inMath) return convertedText;
+  // Already normalized to canonical LaTeX when dialect is "latex"
+  if (dialect === "latex") return convertedText;
+  return convertOutputDialect(rawSource, rawSource.length, "latex").insert;
 }
 
 function toDialectOutput(
@@ -89,8 +98,9 @@ export function evaluateRulePreview(rule: InputRule, dialect: OutputDialect): Ru
   if (rule.type === "text") {
     const expanded = expandTemplate(rule.replacement);
     const converted = toDialectOutput(expanded.insert, expanded.cursorOffset, rule, inMath, dialect);
+    const canonical = toCanonicalLatex(expanded.insert, converted.insert, rule, inMath, dialect);
     return {
-      tex: formatTexForMathJax(toCanonicalLatex(converted.insert, rule, inMath)),
+      tex: formatTexForMathJax(canonical),
       rawOutput: converted.insert,
     };
   }
@@ -101,7 +111,7 @@ export function evaluateRulePreview(rule: InputRule, dialect: OutputDialect): Ru
       const re = new RegExp(`(?:${rule.trigger})$`, rule.flags ?? "");
       const m = re.exec(rule.exampleInput);
       if (!m) {
-        return { tex: "", rawOutput: "", error: `示例 "${rule.exampleInput}" 未匹配当前正则` };
+        return { tex: "", rawOutput: "", error: t("preview.regexMismatch", { sample: rule.exampleInput }) };
       }
       rawExpanded = expandTemplate(expandRegexTemplate(rule.replacement, m)).insert;
     } else {
@@ -109,15 +119,16 @@ export function evaluateRulePreview(rule: InputRule, dialect: OutputDialect): Ru
     }
 
     const converted = toDialectOutput(rawExpanded, rawExpanded.length, rule, inMath, dialect).insert;
+    const canonical = toCanonicalLatex(rawExpanded, converted, rule, inMath, dialect);
     return {
-      tex: formatTexForMathJax(toCanonicalLatex(converted, rule, inMath)),
+      tex: formatTexForMathJax(canonical),
       rawOutput: converted,
     };
   }
 
   const sample = rule.exampleInput ?? "";
   if (sample.length === 0) {
-    return { tex: "\\text{JS}", rawOutput: "(未填示例输入)" };
+    return { tex: "\\text{JS}", rawOutput: t("preview.jsNoSample") };
   }
 
   try {
@@ -138,16 +149,18 @@ export function evaluateRulePreview(rule: InputRule, dialect: OutputDialect): Ru
     });
     const res = fn(ctx);
     if (!res) {
-      return { tex: "", rawOutput: "", error: `示例 "${sample}" 返回 null（未触发）` };
+      return { tex: "", rawOutput: "", error: t("preview.jsReturnedNull", { sample }) };
     }
     const prefixKeep = sample.slice(0, Math.max(0, sample.length - (res.replaceLength ?? 0)));
     const rawInsert = String(res.insert ?? "");
     const cursor = res.cursorOffset ?? rawInsert.length;
     const finalInsert = toDialectOutput(rawInsert, cursor, rule, inMath, dialect).insert;
-    const combined = prefixKeep + finalInsert;
+    const combinedRaw = prefixKeep + rawInsert;
+    const combinedFinal = prefixKeep + finalInsert;
+    const canonical = toCanonicalLatex(combinedRaw, combinedFinal, rule, inMath, dialect);
     return {
-      tex: formatTexForMathJax(toCanonicalLatex(combined, rule, inMath)),
-      rawOutput: combined,
+      tex: formatTexForMathJax(canonical),
+      rawOutput: combinedFinal,
     };
   } catch (err) {
     return { tex: "", rawOutput: "", error: (err as Error).message || String(err) };

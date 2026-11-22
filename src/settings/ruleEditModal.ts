@@ -1,4 +1,5 @@
 import { App, Modal, Setting } from "obsidian";
+import { t } from "../i18n";
 import { evaluateRulePreview } from "../input/ruleEngine";
 import { InputRule, OutputDialect, RuleScope, TriggerMode } from "../input/types";
 import { cloneRule } from "../input/validation";
@@ -24,16 +25,16 @@ export class RuleEditModal extends Modal {
   private renderTypeBody(container: HTMLElement): void {
     if (this.draft.type === "text") {
       const rule = this.draft;
-      new Setting(container).setName("触发词").addText((t) =>
-        t.setValue(rule.trigger).onChange((v) => {
+      new Setting(container).setName(t("modal.text.trigger")).addText((tInput) =>
+        tInput.setValue(rule.trigger).onChange((v) => {
           rule.trigger = v;
         })
       );
       new Setting(container)
-        .setName("替换内容")
-        .setDesc("使用 $0 标记落光标位置")
-        .addText((t) =>
-          t.setValue(rule.replacement).onChange((v) => {
+        .setName(t("modal.text.replace"))
+        .setDesc(t("modal.text.replaceDesc"))
+        .addText((tInput) =>
+          tInput.setValue(rule.replacement).onChange((v) => {
             rule.replacement = v;
             this.refreshPreview?.();
           })
@@ -44,55 +45,67 @@ export class RuleEditModal extends Modal {
     if (this.draft.type === "regex") {
       const rule = this.draft;
       new Setting(container)
-        .setName("正则表达式（自动锚定光标前文本末尾）")
-        .addText((t) =>
-          t.setPlaceholder("如 bb([a-zA-Z])").setValue(rule.trigger).onChange((v) => {
-            rule.trigger = v;
-            this.refreshPreview?.();
-          })
+        .setName(t("modal.regex.trigger"))
+        .addText((tInput) =>
+          tInput
+            .setPlaceholder(t("modal.regex.triggerPlaceholder"))
+            .setValue(rule.trigger)
+            .onChange((v) => {
+              rule.trigger = v;
+              this.refreshPreview?.();
+            })
         );
       new Setting(container)
-        .setName("正则标志（可选 i/u/s）")
-        .addText((t) =>
-          t.setPlaceholder("留空或 i").setValue(rule.flags ?? "").onChange((v) => {
-            rule.flags = v.trim();
-            this.refreshPreview?.();
-          })
+        .setName(t("modal.regex.flags"))
+        .addText((tInput) =>
+          tInput
+            .setPlaceholder(t("modal.regex.flagsPlaceholder"))
+            .setValue(rule.flags ?? "")
+            .onChange((v) => {
+              rule.flags = v.trim();
+              this.refreshPreview?.();
+            })
         );
       new Setting(container)
-        .setName("替换模板")
-        .setDesc("$1/$2 引用捕获组，$0 标记落光标位置")
-        .addText((t) =>
-          t.setValue(rule.replacement).onChange((v) => {
+        .setName(t("modal.regex.replace"))
+        .setDesc(t("modal.regex.replaceDesc"))
+        .addText((tInput) =>
+          tInput.setValue(rule.replacement).onChange((v) => {
             rule.replacement = v;
             this.refreshPreview?.();
           })
         );
       new Setting(container)
-        .setName("示例输入（用于预览试跑）")
-        .addText((t) =>
-          t.setPlaceholder("如 bbx").setValue(rule.exampleInput ?? "").onChange((v) => {
-            rule.exampleInput = v;
-            this.refreshPreview?.();
-          })
+        .setName(t("modal.regex.example"))
+        .addText((tInput) =>
+          tInput
+            .setPlaceholder(t("modal.regex.examplePlaceholder"))
+            .setValue(rule.exampleInput ?? "")
+            .onChange((v) => {
+              rule.exampleInput = v;
+              this.refreshPreview?.();
+            })
         );
       return;
     }
 
     const rule = this.draft;
     new Setting(container)
-      .setName("示例输入（右侧试跑与预览）")
-      .setDesc("填写触发前文本或完整按键串，如 sm0n")
-      .addText((t) =>
-        t.setPlaceholder("如 sm0n").setValue(rule.exampleInput ?? "").onChange((v) => {
-          rule.exampleInput = v;
-          this.refreshPreview?.();
-        })
+      .setName(t("modal.js.example"))
+      .setDesc(t("modal.js.exampleDesc"))
+      .addText((tInput) =>
+        tInput
+          .setPlaceholder(t("modal.js.examplePlaceholder"))
+          .setValue(rule.exampleInput ?? "")
+          .onChange((v) => {
+            rule.exampleInput = v;
+            this.refreshPreview?.();
+          })
       );
 
     container.createDiv({
       cls: "struct-latex-js-label",
-      text: "JavaScript 函数体（接收 ctx，返回 RuleAction 或 null）：",
+      text: t("modal.js.codeLabel"),
     });
     const editor = container.createEl("textarea", { cls: "struct-latex-js-editor" });
     editor.value = rule.code;
@@ -120,24 +133,30 @@ export class RuleEditModal extends Modal {
     contentEl.empty();
 
     const typeTitle =
-      this.draft.type === "text" ? "纯替换规则" : this.draft.type === "regex" ? "正则规则" : "JavaScript 规则";
-    contentEl.createEl("h3", { text: `${this.isNew ? "新增" : "编辑"}${typeTitle}` });
+      this.draft.type === "text"
+        ? t("modal.title.text")
+        : this.draft.type === "regex"
+        ? t("modal.title.regex")
+        : t("modal.title.js");
+    contentEl.createEl("h3", {
+      text: `${this.isNew ? t("modal.newPrefix") : t("modal.editPrefix")}${typeTitle}`,
+    });
 
-    new Setting(contentEl).setName("规则名称").addText((t) =>
-      t.setValue(this.draft.name).onChange((v) => {
+    new Setting(contentEl).setName(t("modal.ruleName")).addText((tInput) =>
+      tInput.setValue(this.draft.name).onChange((v) => {
         this.draft.name = v;
       })
     );
-    new Setting(contentEl).setName("所属分组").addText((t) =>
-      t.setValue(this.draft.group).onChange((v) => {
-        this.draft.group = v.trim() || "自定义";
+    new Setting(contentEl).setName(t("modal.ruleGroup")).addText((tInput) =>
+      tInput.setValue(this.draft.group).onChange((v) => {
+        this.draft.group = v.trim() || t("draft.group");
       })
     );
-    new Setting(contentEl).setName("生效作用域").addDropdown((dd) =>
+    new Setting(contentEl).setName(t("modal.scope")).addDropdown((dd) =>
       dd
-        .addOption("math", "仅数学模式")
-        .addOption("text", "仅非数学正文")
-        .addOption("any", "任意位置")
+        .addOption("math", t("modal.scope.math"))
+        .addOption("text", t("modal.scope.text"))
+        .addOption("any", t("modal.scope.any"))
         .setValue(this.draft.scope)
         .onChange((v) => {
           this.draft.scope = v as RuleScope;
@@ -145,11 +164,11 @@ export class RuleEditModal extends Modal {
     );
 
     const keybindHost = contentEl.createDiv();
-    new Setting(contentEl).setName("触发方式").addDropdown((dd) =>
+    new Setting(contentEl).setName(t("modal.triggerMode")).addDropdown((dd) =>
       dd
-        .addOption("auto", "Auto（敲完末字自动触发）")
-        .addOption("confirm", "触发词 + 确认键")
-        .addOption("hotkey", "全局/局部组合键或连按")
+        .addOption("auto", t("modal.triggerMode.auto"))
+        .addOption("confirm", t("modal.triggerMode.confirm"))
+        .addOption("hotkey", t("modal.triggerMode.hotkey"))
         .setValue(this.draft.triggerMode)
         .onChange((v) => {
           this.draft.triggerMode = v as TriggerMode;
@@ -169,10 +188,10 @@ export class RuleEditModal extends Modal {
 
     const footer = contentEl.createDiv({ cls: "struct-latex-modal-footer" });
     new Setting(footer)
-      .addButton((b) => b.setButtonText("取消").onClick(() => this.close()))
+      .addButton((b) => b.setButtonText(t("modal.cancel")).onClick(() => this.close()))
       .addButton((b) =>
         b
-          .setButtonText("校验并保存")
+          .setButtonText(t("modal.save"))
           .setCta()
           .onClick(async () => {
             if (!showValidationFailure(this.errorEl, this.draft)) return;

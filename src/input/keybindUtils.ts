@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { InputRule } from "./types";
 
 const MODIFIER_ORDER = ["Mod", "Ctrl", "Alt", "Shift"] as const;
@@ -151,8 +152,8 @@ export function formatTriggerBadge(rule: InputRule): string {
   if (rule.triggerMode === "auto") return "Auto";
   if (rule.triggerMode === "confirm") {
     const key = normalizeKeyCombo(rule.confirmKey ?? "") ?? rule.confirmKey ?? "?";
-    return `触发+${key}`;
+    return t("badge.confirm", { key });
   }
   const hk = normalizeHotkey(rule.hotkey ?? "") ?? rule.hotkey ?? "?";
-  return `快捷键 ${hk}`;
+  return t("badge.hotkey", { hotkey: hk });
 }

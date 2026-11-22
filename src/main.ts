@@ -1,11 +1,30 @@
 import { Extension } from "@codemirror/state";
-import { Notice, Platform, Plugin } from "obsidian";
+import * as obsidianApi from "obsidian";
+import { Notice, Platform, Plugin, moment } from "obsidian";
 import { createSmartBackspaceExtension } from "./editor/smartBackspace";
 import { createSmartInputExtension } from "./editor/smartInput";
 import { createSmartJumpExtension } from "./editor/smartJump";
+import { resolveAppLocale, setLocale, t } from "./i18n";
 import { DEFAULT_PLUGIN_SETTINGS, PluginSettings } from "./input/types";
 import { RuleStore } from "./settings/ruleStore";
 import { StructLatexSettingTab } from "./settings/settingTab";
+
+export function detectObsidianLanguage(): string {
+  const maybeGetLang = (obsidianApi as { getLanguage?: () => string }).getLanguage;
+  if (typeof maybeGetLang === "function") {
+    const lang = maybeGetLang();
+    if (lang) return lang;
+  }
+  if (typeof window !== "undefined") {
+    try {
+      const stored = window.localStorage?.getItem("language");
+      if (stored) return stored;
+    } catch {
+      // Ignore storage access errors in restricted contexts
+    }
+  }
+  return moment?.locale?.() || "en";
+}
 
 export default class StructLatexPlugin extends Plugin {
   settings: PluginSettings = { ...DEFAULT_PLUGIN_SETTINGS };
@@ -13,13 +32,18 @@ export default class StructLatexPlugin extends Plugin {
   private editorExtensions: Extension[] = [];
   private lastJsErrorAt = 0;
 
+  syncLocale(): void {
+    setLocale(resolveAppLocale(this.settings.language, detectObsidianLanguage()));
+  }
+
   async onload(): Promise<void> {
     await this.loadSettings();
+    this.syncLocale();
 
     this.ruleStore = new RuleStore(this.app, this.manifest);
     const { loadError } = await this.ruleStore.load();
     if (loadError) {
-      new Notice(`Struct LaTeX: ${loadError}`);
+      new Notice(t("notice.loadError", { err: loadError }));
     }
 
     this.editorExtensions.push(
@@ -32,7 +56,7 @@ export default class StructLatexPlugin extends Plugin {
           const now = Date.now();
           if (now - this.lastJsErrorAt > 4000) {
             this.lastJsErrorAt = now;
-            new Notice(`Struct LaTeX JS 规则 [${rule.name}] 执行异常: ${message}`);
+            new Notice(t("notice.jsError", { name: rule.name, message }));
           }
         },
       }),

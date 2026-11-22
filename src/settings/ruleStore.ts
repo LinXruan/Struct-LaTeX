@@ -1,4 +1,5 @@
 import { App, PluginManifest, normalizePath } from "obsidian";
+import { t } from "../i18n";
 import { createDefaultRulesFile } from "../input/defaultRules";
 import { CompiledRuleSet, compileRules } from "../input/ruleCompiler";
 import { InputRule, RulesFileData } from "../input/types";
@@ -59,7 +60,7 @@ export class RuleStore {
       const parsed: unknown = JSON.parse(raw);
       const validation = validateRulesFile(parsed);
       if (!validation.valid) {
-        this.loadError = validation.errors[0] ?? "rules.json 格式校验失败";
+        this.loadError = validation.errors[0] ?? t("store.invalidFormat");
         return { loadError: this.loadError };
       }
       const fileData = parsed as RulesFileData;
@@ -67,7 +68,7 @@ export class RuleStore {
       this.compiled = compileRules(this.rules);
       return { loadError: null };
     } catch (err) {
-      this.loadError = `读取 rules.json 失败: ${(err as Error).message}`;
+      this.loadError = t("store.readError", { msg: (err as Error).message });
       return { loadError: this.loadError };
     }
   }
@@ -79,7 +80,7 @@ export class RuleStore {
     };
     const validation = validateRulesFile(payload);
     if (!validation.valid) {
-      throw new Error(validation.errors[0] ?? "规则校验未通过，拒绝写入");
+      throw new Error(validation.errors[0] ?? t("store.saveRejected"));
     }
 
     await this.writeRulesFile(payload);
