@@ -162,6 +162,13 @@ describe("Trigger Engine — Validation, Guards, Text/Regex/JS Evaluation & Pref
     assert.equal(cmdCtx.inCommandTyping, true);
     assert.equal(evaluateTriggerRules(compiled, cmdCtx).length, 0);
 
+    // 2b. Non-letter trigger after a complete `\command` (`\;` + `;` must not slice `\;`, while `\alpha;` + `;` works)
+    const sliceCmdCtx = makeMathCtx("\\;", ";", "");
+    assert.equal(evaluateTriggerRules(compiled, sliceCmdCtx).length, 0);
+    const afterAlphaCtx = makeMathCtx("\\frac{\\alpha;", ";", "}{b}");
+    assert.equal(afterAlphaCtx.inCommandTyping, false);
+    assert.equal(evaluateTriggerRules(compiled, afterAlphaCtx).length, 1);
+
     // 3. Inside `\text{hell|}` typing `o`, `excludeInTextMode` (default true) blocks `o` hijacking!
     const textCtx = makeMathCtx("\\text{hell", "o", "}");
     assert.equal(textCtx.inTextMode, true);

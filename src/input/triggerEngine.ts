@@ -3,7 +3,7 @@ import { buildMathTree } from "../parser/builder";
 import { resolveStructuralDelete } from "../parser/deleteResolver";
 import { resolveStructuralJump } from "../parser/jumpResolver";
 import { TextSpan } from "../parser/types";
-import { buildRuleContext } from "./contextBuilder";
+import { buildRuleContext, slicesBackslashToken } from "./contextBuilder";
 import {
   CompiledTriggerRule,
   JsTriggerFn,
@@ -133,13 +133,11 @@ function passesWordBoundary(rule: TriggerRule, text: string, matchStart: number)
   return !/[a-zA-Z]/.test(text[matchStart - 1]);
 }
 
-function evaluateSingleTriggerRule(
+function resolveRawTriggerAction(
   compiled: CompiledTriggerRule,
   ctx: InputRuleContext,
   onJsError?: TriggerJsErrorReporter
 ): TriggerMatchAction | null {
-  if (!passesTriggerGuards(compiled.rule, ctx)) return null;
-
   if (compiled.kind === "text") {
     const trigger = compiled.rule.trigger;
     if (trigger.length === 0 || ctx.text.length < trigger.length) return null;
@@ -174,6 +172,23 @@ function evaluateSingleTriggerRule(
     onJsError?.(compiled.rule, (err as Error).message || String(err));
     return null;
   }
+}
+
+function evaluateSingleTriggerRule(
+  compiled: CompiledTriggerRule,
+  ctx: InputRuleContext,
+  onJsError?: TriggerJsErrorReporter
+): TriggerMatchAction | null {
+  if (!passesTriggerGuards(compiled.rule, ctx)) return null;
+
+  const action = resolveRawTriggerAction(compiled, ctx, onJsError);
+  if (!action) return null;
+
+  const excludeCmd = compiled.rule.guards?.excludeInCommand ?? true;
+  if (excludeCmd && slicesBackslashToken(ctx.before, ctx.text.length - action.replaceLength)) {
+    return null;
+  }
+  return action;
 }
 
 export function evaluateTriggerRules(

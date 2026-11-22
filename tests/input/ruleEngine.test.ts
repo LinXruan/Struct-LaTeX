@@ -254,6 +254,11 @@ describe("Rule Engine — Triggers, Guards, Structural JS Context & Error Isolat
     const m3 = evaluateHotkey(compiled, makeMathCtx("", ""), "Mod+K M", "latex");
     assert.ok(m3);
     assert.equal(m3.action.insert, "\\begin{bmatrix}\\end{bmatrix}");
+
+    // Hotkey rules (empty key) right after a complete LaTeX command must not be blocked
+    const mAfterCmd = evaluateHotkey(compiled, makeMathCtx("\\sum", ""), "Alt+F", "latex");
+    assert.ok(mAfterCmd);
+    assert.equal(mAfterCmd.action.insert, "\\frac{}{}");
   });
 
   it("enforces textMode, envName, commandTyping guards and exposes prevObject to JS rules", () => {
@@ -284,18 +289,47 @@ describe("Rule Engine — Triggers, Guards, Structural JS Context & Error Isolat
       trigger: "aa",
       replacement: "\\alpha",
     };
+    const subRule: InputRule = {
+      id: "t-sub",
+      name: "sub",
+      group: "g",
+      type: "text",
+      enabled: true,
+      scope: "math",
+      triggerMode: "auto",
+      trigger: "_",
+      replacement: "_{$0}",
+    };
+    const sliceTextRule: InputRule = {
+      id: "t-slice",
+      name: "slice",
+      group: "g",
+      type: "text",
+      enabled: true,
+      scope: "math",
+      triggerMode: "auto",
+      trigger: "m_",
+      replacement: "X",
+    };
 
-    const compiled = compileRules([wrapPrevJs, textRule]);
+    const compiled = compileRules([wrapPrevJs, textRule, subRule, sliceTextRule]);
 
     // prevObject wraps nested \frac{a}{b}
     const wrapped = evaluateAutoInput(compiled, makeMathCtx("\\frac{a}{b}", "!"), "latex");
     assert.ok(wrapped);
     assert.equal(wrapped.action.insert, "\\boxed{\\frac{a}{b}}");
 
-    // Guard blocks inside \text{...}, \begin{...}, and while typing \cmd
+    // Guard blocks inside \text{...}, \begin{...}, while typing \cmd letters, and escaped \_
     assert.equal(evaluateAutoInput(compiled, makeMathCtx("\\text{a", "a"), "latex"), null);
     assert.equal(evaluateAutoInput(compiled, makeMathCtx("\\begin{aa", "a"), "latex"), null);
     assert.equal(evaluateAutoInput(compiled, makeMathCtx("\\a", "a"), "latex"), null);
+    assert.equal(evaluateAutoInput(compiled, makeMathCtx("\\", "_"), "latex"), null);
+
+    // Non-letter operator `_` triggers after complete `\sum`, while `m_` cannot slice `\sum`
+    const subAfterCmd = evaluateAutoInput(compiled, makeMathCtx("\\sum", "_"), "latex");
+    assert.ok(subAfterCmd);
+    assert.equal(subAfterCmd.rule.id, "t-sub");
+    assert.equal(subAfterCmd.action.insert, "_{}");
   });
 
   it("isolates JS runtime errors without crashing evaluation", () => {

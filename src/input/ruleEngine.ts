@@ -1,4 +1,4 @@
-import { expandTemplate } from "./contextBuilder";
+import { expandTemplate, slicesBackslashToken } from "./contextBuilder";
 import { convertOutputDialect } from "./dialectConverter";
 import { CompiledRule, CompiledRuleSet } from "./ruleCompiler";
 import {
@@ -23,6 +23,10 @@ function pickContext(rule: InputRule, input: EvaluationContext): InputRuleContex
   return input.line;
 }
 
+function isExcludedInCommand(rule: InputRule): boolean {
+  return rule.guards?.excludeInCommand ?? rule.scope === "math";
+}
+
 function passesContextGuards(rule: InputRule, ctx: InputRuleContext): boolean {
   if (rule.scope === "math" && !ctx.inMath) return false;
   if (rule.scope === "text" && (ctx.inMath || ctx.inCode)) return false;
@@ -31,7 +35,7 @@ function passesContextGuards(rule: InputRule, ctx: InputRuleContext): boolean {
   const guards = rule.guards ?? {};
   const excludeText = guards.excludeInTextMode ?? isMathRule;
   const excludeEnv = guards.excludeInEnvName ?? isMathRule;
-  const excludeCmd = guards.excludeInCommand ?? isMathRule;
+  const excludeCmd = isExcludedInCommand(rule);
 
   if (excludeText && ctx.inTextMode) return false;
   if (excludeEnv && ctx.inEnvName) return false;
@@ -51,14 +55,12 @@ export function expandRegexTemplate(replacement: string, groups: readonly string
   });
 }
 
-function evaluateCompiledRule(
+function resolveRawRuleAction(
   compiled: CompiledRule,
   ctx: InputRuleContext,
   allowTextMatchWithoutTrigger: boolean,
   onJsError?: JsErrorReporter
 ): ResolvedRuleAction | null {
-  if (!passesContextGuards(compiled.rule, ctx)) return null;
-
   if (compiled.kind === "text") {
     const trigger = compiled.rule.trigger;
     if (trigger.length === 0) {
@@ -108,6 +110,26 @@ function evaluateCompiledRule(
     onJsError?.(compiled.rule, (err as Error).message || String(err));
     return null;
   }
+}
+
+function evaluateCompiledRule(
+  compiled: CompiledRule,
+  ctx: InputRuleContext,
+  allowTextMatchWithoutTrigger: boolean,
+  onJsError?: JsErrorReporter
+): ResolvedRuleAction | null {
+  if (!passesContextGuards(compiled.rule, ctx)) return null;
+
+  const action = resolveRawRuleAction(compiled, ctx, allowTextMatchWithoutTrigger, onJsError);
+  if (!action) return null;
+
+  if (
+    isExcludedInCommand(compiled.rule) &&
+    slicesBackslashToken(ctx.before, ctx.text.length - action.replaceLength)
+  ) {
+    return null;
+  }
+  return action;
 }
 
 function finalizeDialect(

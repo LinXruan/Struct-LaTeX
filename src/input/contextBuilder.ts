@@ -102,12 +102,41 @@ function isInTextModeSlot(before: string, tree: MathTree | null, relPos: number)
   return stack.some(Boolean);
 }
 
+const UNESCAPED_CMD_TAIL_RE = /(?:^|[^\\])(?:\\\\)*\\([a-zA-Z]*)$/;
+
 function isTypingEnvName(before: string): boolean {
   return /\\(?:begin|end)\s*\{[a-zA-Z0-9*]*$/.test(before);
 }
 
-function isTypingCommand(before: string): boolean {
-  return /(?:^|[^\\])(?:\\\\)*\\[a-zA-Z]*$/.test(before);
+function isTypingCommand(before: string, key: string): boolean {
+  const match = UNESCAPED_CMD_TAIL_RE.exec(before);
+  if (!match) return false;
+  const letters = match[1];
+  // Bare unescaped `\`: any typed character begins `\cmd` or a control symbol (`\_`, `\^`, `\/`).
+  if (letters.length === 0) return key.length > 0;
+  // Inside `\[a-zA-Z]+`: only letters extend the command name; operators like `_`, `^`, `/` end it.
+  if (/^[a-zA-Z]/.test(key)) return true;
+  // `\left/` and `\right/` form single delimiter tokens in `tokenizeMath`.
+  if (key === "/" && (letters === "left" || letters === "right")) return true;
+  return false;
+}
+
+/**
+ * Returns true when `matchStart` falls strictly inside an existing backslash-prefixed
+ * token (e.g. `\sm`, `\;`, `\|`, `\left|`) in `before`, which would slice off the `\` prefix.
+ */
+export function slicesBackslashToken(before: string, matchStart: number): boolean {
+  if (matchStart <= 0 || matchStart >= before.length) return false;
+  const lineStart = before.lastIndexOf("\n", matchStart - 1) + 1;
+  const relStart = matchStart - lineStart;
+  const tokens = tokenizeMath(before.slice(lineStart));
+  for (const tok of tokens) {
+    if (tok.from >= relStart) break;
+    if (tok.to > relStart && tok.text.startsWith("\\")) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export interface ContextBuildParams {
@@ -139,7 +168,7 @@ export function buildRuleContext(params: ContextBuildParams): InputRuleContext {
     inBlockMath,
     inCode,
     inTextMode: inMath ? isInTextModeSlot(before, tree, relPos) : false,
-    inCommandTyping: inMath ? isTypingCommand(before) : false,
+    inCommandTyping: inMath ? isTypingCommand(before, key) : false,
     inEnvName: inMath ? isTypingEnvName(before) : false,
     tree,
     relPos,

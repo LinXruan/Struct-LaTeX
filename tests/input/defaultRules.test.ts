@@ -197,13 +197,71 @@ describe("Official Default Rules — JS Rules & Non-Matrix Input Flows", () => {
     assert.equal(simulateTyping("el|-+", "unicode"), "\\left|▮\\right._{-∞}^{+∞}");
   });
 
-  it("handles command auto-space without interrupting hand-typed prefixes like \\left or \\sinh", () => {
+  it("handles command auto-space without interrupting hand-typed prefixes like \\left, \\sinh, \\dots, or \\texttt", () => {
     assert.equal(simulateTyping("\\sinx", "latex"), "\\sin x▮");
     assert.equal(simulateTyping("\\sinhx", "latex"), "\\sinh x▮");
     assert.equal(simulateTyping("\\left", "latex"), "\\left▮");
     assert.equal(simulateTyping("arcsin", "latex"), "\\arcsin▮");
     assert.equal(simulateTyping("sin", "latex"), "\\sin▮");
     assert.equal(simulateTyping("\\text{sin}", "latex"), "\\text{sin}▮");
+    assert.equal(simulateTyping("\\dots", "latex"), "\\dots▮");
+    assert.equal(simulateTyping("\\texttt", "latex"), "\\texttt▮");
+    assert.equal(simulateTyping("\\textsf", "latex"), "\\textsf▮");
+    assert.equal(simulateTyping("\\bigl", "latex"), "\\bigl▮");
+    assert.equal(simulateTyping("\\Bigl", "latex"), "\\Bigl▮");
+    assert.equal(simulateTyping("\\leqslant", "latex"), "\\leqslant▮");
+    assert.equal(simulateTyping("\\geqslant", "latex"), "\\geqslant▮");
+    assert.equal(simulateTyping("\\sech", "latex"), "\\sech▮");
+    assert.equal(simulateTyping("\\csch", "latex"), "\\csch▮");
+    assert.equal(simulateTyping("\\subsetneq", "latex"), "\\subsetneq▮");
+    assert.equal(simulateTyping("\\rightharpoonup", "latex"), "\\rightharpoonup▮");
+  });
+
+  it("expands post-command scripts and fractions uniformly while protecting escaped symbols and backslash tokens", () => {
+    // Post-command _, ^, / work after both hand-typed and auto-expanded commands in latex & unicode
+    assert.equal(simulateTyping("\\sum_", "latex"), "\\sum_{▮}");
+    assert.equal(simulateTyping("sum_", "latex"), "\\sum_{▮}");
+    assert.equal(simulateTyping("sum_", "unicode"), "∑_{▮}");
+    assert.equal(simulateTyping("\\sum^", "latex"), "\\sum^{▮}");
+    assert.equal(simulateTyping("sum^", "latex"), "\\sum^{▮}");
+    assert.equal(simulateTyping("\\int_", "latex"), "\\int_{▮}");
+    assert.equal(simulateTyping("\\lim_", "latex"), "\\lim_{▮}");
+    assert.equal(simulateTyping("\\alpha_", "latex"), "\\alpha_{▮}");
+    assert.equal(simulateTyping(";a_", "latex"), "\\alpha_{▮}");
+    assert.equal(simulateTyping(";a^", "latex"), "\\alpha^{▮}");
+    assert.equal(simulateTyping("\\sin^", "latex"), "\\sin^{▮}");
+    assert.equal(simulateTyping("\\log_", "latex"), "\\log_{▮}");
+    assert.equal(simulateTyping("\\max_", "latex"), "\\max_{▮}");
+    assert.equal(simulateTyping("limsup_", "latex"), "\\limsup_{▮}");
+    assert.equal(simulateTyping("\\pi/", "latex"), "\\pi\\frac{▮}{}");
+    assert.equal(simulateTyping("pi/", "latex"), "\\pi\\frac{▮}{}");
+    assert.equal(simulateTyping("\\pi/", "unicode"), "\\pi\\frac{▮}{}");
+
+    // Escaped control symbols and delimiter slashes stay intact; even `\\` still allows `_`
+    assert.equal(simulateTyping("\\_", "latex"), "\\_▮");
+    assert.equal(simulateTyping("\\^", "latex"), "\\^▮");
+    assert.equal(simulateTyping("\\/", "latex"), "\\/▮");
+    assert.equal(simulateTyping("\\left/", "latex"), "\\left/▮");
+    assert.equal(simulateTyping("\\right/", "latex"), "\\right/▮");
+    assert.equal(simulateTyping("\\\\_", "latex"), "\\\\_{▮}");
+
+    // Multi-char rules never slice through preceding backslash tokens to leak orphan `\`
+    assert.equal(simulateTyping("\\;a", "latex"), "\\;a▮");
+    assert.equal(simulateTyping("\\;(", "latex"), "\\;(▮");
+    assert.equal(simulateTyping("\\!=", "latex"), "\\!=▮");
+    assert.equal(simulateTyping("\\sm=", "latex"), "\\sm=▮");
+    assert.equal(simulateTyping("\\sm0n", "latex"), "\\sm0n▮");
+    assert.equal(simulateTyping("\\it=", "latex"), "\\it=▮");
+    assert.equal(simulateTyping("\\it01", "latex"), "\\it01▮");
+    assert.equal(simulateTyping("\\lm=", "latex"), "\\lm=▮");
+    assert.equal(simulateTyping("\\er||", "latex"), "\\er||▮");
+    assert.equal(simulateTyping("\\er|01", "latex"), "\\er|01▮");
+    assert.equal(simulateTyping("\\lr(", "latex"), "\\lr(▮");
+    assert.equal(simulateTyping("\\o+", "latex"), "\\o+▮");
+    assert.equal(simulateTyping("\\l[)", "latex"), "\\l[)▮");
+    assert.equal(simulateTyping("\\...", "latex"), "\\...▮");
+    assert.equal(simulateTyping("\\;;a", "latex"), "\\;\\alpha▮");
+    assert.equal(simulateTyping("\\|->", "latex"), "\\|\\to▮");
   });
 
   it("handles derivatives, directional dots, delimiters, scripts, and cross-dialect chained arrows", () => {
