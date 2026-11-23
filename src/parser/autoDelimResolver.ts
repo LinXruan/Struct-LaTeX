@@ -74,23 +74,41 @@ const TALL_CMD_BRACKETS = new Set([
   "\\substack",
 ]);
 
+interface AutoDelimSpec {
+  close: string;
+  leftInsert: string;
+  rightInsert: string;
+}
+
+interface MatchedAutoDelim {
+  obj: BracketObject;
+  spec: AutoDelimSpec;
+}
+
+const AUTO_DELIM_SPECS: ReadonlyMap<string, AutoDelimSpec> = new Map([
+  ["(", { close: ")", leftInsert: "\\left(", rightInsert: "\\right)" }],
+  ["|", { close: "|", leftInsert: "\\left|", rightInsert: "\\right|" }],
+  ["\\|", { close: "\\|", leftInsert: "\\left\\|", rightInsert: "\\right\\|" }],
+  ["∥", { close: "∥", leftInsert: "\\left\\|", rightInsert: "\\right\\|" }],
+]);
+
 function isTallLeaf(obj: WordObject | AtomObject): boolean {
   if (TALL_WORD_COMMANDS.has(obj.text)) return true;
   return obj.dependents.some((dep) => dep.kind === "word" && dep.text === "\\limits");
 }
 
-function isPlainParenCandidate(
+function matchAutoDelimSpec(
   obj: BracketObject,
   prevSibling: LatexObject | undefined,
   source: string,
   inTextMode: boolean
-): boolean {
-  if (inTextMode || obj.subtype !== "delim" || obj.slots.length !== 1) return false;
+): AutoDelimSpec | null {
+  if (inTextMode || obj.subtype !== "delim" || obj.slots.length !== 1) return null;
   const slot = obj.slots[0];
-  if (slot.textMode) return false;
+  if (slot.textMode) return null;
 
-  if (source.slice(slot.openFrom, slot.openCoreTo) !== "(") return false;
-  if (source.slice(slot.bodyTo, slot.closeTo) !== ")") return false;
+  const spec = AUTO_DELIM_SPECS.get(source.slice(slot.openFrom, slot.openCoreTo));
+  if (!spec || source.slice(slot.bodyTo, slot.closeTo) !== spec.close) return null;
 
   if (
     prevSibling &&
@@ -98,7 +116,7 @@ function isPlainParenCandidate(
     MANUAL_LEFT_SIZE_COMMANDS.has(prevSibling.text) &&
     prevSibling.to === obj.coreFrom
   ) {
-    return false;
+    return null;
   }
 
   const lastChild = slot.children[slot.children.length - 1];
@@ -108,10 +126,10 @@ function isPlainParenCandidate(
     MANUAL_RIGHT_SIZE_COMMANDS.has(lastChild.text) &&
     lastChild.to === slot.bodyTo
   ) {
-    return false;
+    return null;
   }
 
-  return true;
+  return spec;
 }
 
 /**
@@ -148,7 +166,7 @@ function collectUpgradesInList(
   source: string,
   inTextMode: boolean,
   forceSubtree: boolean,
-  out: BracketObject[]
+  out: MatchedAutoDelim[]
 ): void {
   for (let i = 0; i < list.length; i++) {
     const obj = list[i];
@@ -158,12 +176,12 @@ function collectUpgradesInList(
     if (!forceSubtree && !coversCursor) continue;
 
     const prevSibling = i > 0 ? list[i - 1] : undefined;
-    const isCandidate = isPlainParenCandidate(obj, prevSibling, source, inTextMode);
-    if (isCandidate && hasTallOrNestedContent(obj.slots[0].children)) {
-      out.push(obj);
+    const spec = matchAutoDelimSpec(obj, prevSibling, source, inTextMode);
+    if (spec && hasTallOrNestedContent(obj.slots[0].children)) {
+      out.push({ obj, spec });
     }
 
-    const nextForce = forceSubtree || (isCandidate && coversCursor);
+    const nextForce = forceSubtree || (spec !== null && coversCursor);
     for (const slot of obj.slots) {
       const slotTextMode = inTextMode || Boolean(slot.textMode);
       if (slotTextMode) continue;
@@ -173,21 +191,22 @@ function collectUpgradesInList(
 }
 
 /**
- * Resolves all plain `(...)` brackets around `relPos` (and any nested plain `(...)` inside them)
- * that should auto-upgrade to `\left(...\right)`, returning edits sorted in ascending offset order.
+ * Resolves all plain `(...)`, `|...|`, `\|...\|`, and `∥...∥` delimiters around `relPos`
+ * (and any nested candidates inside them) that should auto-upgrade to `\left...\right`,
+ * returning edits sorted in ascending offset order.
  */
 export function resolveAutoParenUpgrades(tree: MathTree, relPos: number): AutoDelimEdit[] {
   if (relPos <= 0 || relPos > tree.source.length) return [];
 
-  const matchedBrackets: BracketObject[] = [];
-  collectUpgradesInList(tree.roots, relPos, tree.source, false, false, matchedBrackets);
-  if (matchedBrackets.length === 0) return [];
+  const matchedDelims: MatchedAutoDelim[] = [];
+  collectUpgradesInList(tree.roots, relPos, tree.source, false, false, matchedDelims);
+  if (matchedDelims.length === 0) return [];
 
   const edits: AutoDelimEdit[] = [];
-  for (const br of matchedBrackets) {
-    const slot = br.slots[0];
-    edits.push({ from: slot.openFrom, to: slot.openCoreTo, insert: "\\left(" });
-    edits.push({ from: slot.bodyTo, to: slot.closeTo, insert: "\\right)" });
+  for (const { obj, spec } of matchedDelims) {
+    const slot = obj.slots[0];
+    edits.push({ from: slot.openFrom, to: slot.openCoreTo, insert: spec.leftInsert });
+    edits.push({ from: slot.bodyTo, to: slot.closeTo, insert: spec.rightInsert });
   }
 
   edits.sort((a, b) => a.from - b.from);

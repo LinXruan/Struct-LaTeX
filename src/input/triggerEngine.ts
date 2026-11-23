@@ -78,7 +78,7 @@ export function validateTriggerRuleList(rawList: unknown): ValidationResult {
   const seenIds = new Set<string>();
 
   for (let i = 0; i < rawList.length; i++) {
-    const item = rawList[i];
+    const item: unknown = rawList[i];
     const res = validateTriggerRule(item);
     if (!res.valid) {
       const label = isRecord(item) && typeof item.id === "string" && item.id ? item.id : `#${i + 1}`;

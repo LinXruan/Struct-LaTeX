@@ -1,7 +1,7 @@
 import { Notice, Setting } from "obsidian";
 import { getLocale, t } from "../i18n";
 import { TriggerCategory, TriggerRule } from "../input/triggerTypes";
-import { InlinePanelMode } from "./ruleInlinePanels";
+import { copyTextareaContent, InlinePanelMode } from "./ruleInlinePanels";
 import { createDefaultFilterState, FilterState, renderFilterToolbar } from "./settingToolbar";
 import {
   createDraftTriggerRule,
@@ -50,15 +50,7 @@ function renderTriggerInlinePanel(
     textarea.value = triggerStore.exportJson();
     textarea.readOnly = true;
     copyBtn.addEventListener("click", () => {
-      void (async () => {
-        try {
-          await navigator.clipboard.writeText(textarea.value);
-        } catch {
-          textarea.select();
-          container.ownerDocument.execCommand("copy");
-        }
-        new Notice(t("modals.json.copiedNotice"));
-      })();
+      void copyTextareaContent(textarea);
     });
     return;
   }
@@ -260,9 +252,8 @@ export function renderTriggerRulesSection(
     }
 
     const callbacks = buildCallbacks();
-    const doc = listEl.ownerDocument;
-    const fragment = doc.createDocumentFragment();
-    const scratch = doc.createElement("div");
+    const fragment = createFragment();
+    const scratch = listEl.createDiv();
 
     for (const item of items) {
       const sig = getRowSig(item.rule, item.isDraft);

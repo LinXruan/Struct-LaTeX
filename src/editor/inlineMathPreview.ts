@@ -47,10 +47,10 @@ function renderIntoTooltipDom(view: EditorView, dom: HTMLElement, tex: string): 
     dom.replaceChildren();
     const res = renderTexToElement(dom, tex, false);
     if (!res.ok) {
-      const errEl = dom.ownerDocument.createElement("span");
-      errEl.className = "struct-latex-inline-preview-error";
-      errEl.textContent = res.error ?? "";
-      dom.appendChild(errEl);
+      dom.createSpan({
+        cls: "struct-latex-inline-preview-error",
+        text: res.error ?? "",
+      });
       return;
     }
     if (!res.cached) {
@@ -88,8 +88,7 @@ function createPreviewTooltip(target: InlineMathPreviewTarget): PreviewTooltip {
     strictSide: false,
     target,
     create(view: EditorView): TooltipView {
-      const dom = view.dom.ownerDocument.createElement("div");
-      dom.className = "struct-latex-inline-preview-tooltip";
+      const dom = createDiv({ cls: "struct-latex-inline-preview-tooltip" });
       syncTooltipFontSize(view, dom);
       renderIntoTooltipDom(view, dom, target.tex);
       return {

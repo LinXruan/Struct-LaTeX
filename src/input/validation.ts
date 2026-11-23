@@ -114,7 +114,7 @@ export function validateRulesFile(raw: unknown): ValidationResult {
   const seenIds = new Set<string>();
 
   for (let i = 0; i < raw.rules.length; i++) {
-    const item = raw.rules[i];
+    const item: unknown = raw.rules[i];
     const res = validateRule(item);
     if (!res.valid) {
       const label = isRecord(item) && typeof item.id === "string" && item.id ? item.id : `#${i + 1}`;

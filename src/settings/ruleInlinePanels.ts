@@ -122,9 +122,23 @@ export function showValidationFailure(errorBanner: HTMLElement, rule: InputRule)
   return false;
 }
 
+export async function copyTextareaContent(textarea: HTMLTextAreaElement): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(textarea.value);
+      new Notice(t("modals.json.copiedNotice"));
+      return;
+    } catch {
+      // Fall back to highlighting the textarea so the user can copy manually
+    }
+  }
+  textarea.focus();
+  textarea.select();
+}
+
 function renderExportPanelBody(
   panel: HTMLElement,
-  doc: Document,
+  _doc: Document,
   callbacks: InlinePanelCallbacks
 ): void {
   const actionBar = panel.createDiv({ cls: "struct-latex-inline-panel-actions" });
@@ -136,19 +150,7 @@ function renderExportPanelBody(
   textarea.readOnly = true;
 
   copyBtn.addEventListener("click", () => {
-    void (async () => {
-      try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(textarea.value);
-        } else {
-          throw new Error("Clipboard API unavailable");
-        }
-      } catch {
-        textarea.select();
-        doc.execCommand("copy");
-      }
-      new Notice(t("modals.json.copiedNotice"));
-    })();
+    void copyTextareaContent(textarea);
   });
 }
 

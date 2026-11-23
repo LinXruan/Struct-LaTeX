@@ -30,14 +30,6 @@ export function detectObsidianLanguage(): string {
     const lang = maybeGetLang();
     if (lang) return lang;
   }
-  if (typeof window !== "undefined") {
-    try {
-      const stored = window.localStorage?.getItem("language");
-      if (stored) return stored;
-    } catch {
-      // Ignore storage access errors in restricted contexts
-    }
-  }
   return moment?.locale?.() || "en";
 }
 

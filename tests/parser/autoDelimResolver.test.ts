@@ -103,21 +103,53 @@ describe("Auto Paren Sizing Resolver — Tall Symbols, Nesting & Transparent Bri
     assert.equal(runAutoParen("(\\|x\\|▮)", { parseAmbiguousBars: true }), "\\left(\\|x\\|▮\\right)");
     assert.equal(runAutoParen("(\\left|x\\right|▮)", { parseAmbiguousBars: true }), "\\left(\\left|x\\right|▮\\right)");
 
-    // Odd pipe in conditional probability P(A|B) degrades to AtomObject and never triggers
-    assert.equal(runAutoParen("P(A|B▮)", { parseAmbiguousBars: true }), "P(A|B▮)");
-    assert.equal(runAutoParen("(a | b + c▮)", { parseAmbiguousBars: true }), "(a | b + c▮)");
+    // Paired |...|, \|...\|, and ∥...∥ auto-upgrade when containing tall symbols or nested delimiters
+    assert.equal(runAutoParen("|\\frac{a}{b}▮|", { parseAmbiguousBars: true }), "\\left|\\frac{a}{b}▮\\right|");
+    assert.equal(runAutoParen("\\|\\frac{a}{b}▮\\|", { parseAmbiguousBars: true }), "\\left\\|\\frac{a}{b}▮\\right\\|");
+    assert.equal(runAutoParen("∥\\frac{a}{b}▮∥", { parseAmbiguousBars: true }), "\\left\\|\\frac{a}{b}▮\\right\\|");
+    assert.equal(runAutoParen("∥\\sum_{i=1}^{n} x_i∥▮", { parseAmbiguousBars: true }), "\\left\\|\\sum_{i=1}^{n} x_i\\right\\|▮");
+    assert.equal(runAutoParen("\\|(x)▮\\|", { parseAmbiguousBars: true }), "\\left\\|(x)▮\\right\\|");
+    assert.equal(runAutoParen("|(x)▮|", { parseAmbiguousBars: true }), "\\left|(x)▮\\right|");
+    assert.equal(
+      runAutoParen("(|\\frac{a}{b}▮|)", { parseAmbiguousBars: true }),
+      "\\left(\\left|\\frac{a}{b}▮\\right|\\right)"
+    );
+    assert.equal(
+      runAutoParen("\\|(\\frac{a}{b}▮)\\|", { parseAmbiguousBars: true }),
+      "\\left\\|\\left(\\frac{a}{b}▮\\right)\\right\\|"
+    );
+    assert.equal(
+      runAutoParen("∥(\\sum▮)∥", { parseAmbiguousBars: true }),
+      "\\left\\|\\left(\\sum▮\\right)\\right\\|"
+    );
 
-    // When parseAmbiguousBars is disabled, plain |x| is AtomObject (does not trigger), while (|\sum|) triggers via \sum
+    // Flat bars without tall/nested content and odd bars stay untouched
+    assert.equal(runAutoParen("|x + y▮|", { parseAmbiguousBars: true }), "|x + y▮|");
+    assert.equal(runAutoParen("\\|x + y▮\\|", { parseAmbiguousBars: true }), "\\|x + y▮\\|");
+    assert.equal(runAutoParen("∥x + y▮∥", { parseAmbiguousBars: true }), "∥x + y▮∥");
+    assert.equal(runAutoParen("P(A|B▮)", { parseAmbiguousBars: true }), "P(A|B▮)");
+    assert.equal(runAutoParen("(a | b + \\sum▮)", { parseAmbiguousBars: true }), "\\left(a | b + \\sum▮\\right)");
+    assert.equal(runAutoParen("|\\frac{a}{b}| + |c▮", { parseAmbiguousBars: true }), "|\\frac{a}{b}| + |c▮");
+    assert.equal(runAutoParen("∥\\frac{a}{b}∥ + ∥c▮", { parseAmbiguousBars: true }), "∥\\frac{a}{b}∥ + ∥c▮");
+
+    // When parseAmbiguousBars is disabled, plain |...| is AtomObject (does not trigger), while \|...\| still upgrades
     assert.equal(runAutoParen("(|x|▮)", { parseAmbiguousBars: false }), "(|x|▮)");
+    assert.equal(runAutoParen("|\\frac{a}{b}▮|", { parseAmbiguousBars: false }), "|\\frac{a}{b}▮|");
     assert.equal(runAutoParen("(|\\sum|▮)", { parseAmbiguousBars: false }), "\\left(|\\sum|▮\\right)");
+    assert.equal(runAutoParen("\\|\\frac{a}{b}▮\\|", { parseAmbiguousBars: false }), "\\left\\|\\frac{a}{b}▮\\right\\|");
     assert.equal(runAutoParen("(\\left|x\\right|▮)", { parseAmbiguousBars: false }), "\\left(\\left|x\\right|▮\\right)");
   });
 
   it("protects textMode slots, already-sized \\left(...\\right), manual \\bigl...\\bigr, and half-open intervals", () => {
     assert.equal(runAutoParen("(\\text{\\sum (a)}▮)"), "(\\text{\\sum (a)}▮)");
+    assert.equal(runAutoParen("\\|\\text{\\sum}▮\\|"), "\\|\\text{\\sum}▮\\|");
     assert.equal(runAutoParen("\\text{(\\sum▮)}"), "\\text{(\\sum▮)}");
     assert.equal(runAutoParen("\\left(\\sum▮\\right)"), "\\left(\\sum▮\\right)");
+    assert.equal(runAutoParen("\\left|\\sum▮\\right|"), "\\left|\\sum▮\\right|");
+    assert.equal(runAutoParen("\\left\\|\\sum▮\\right\\|"), "\\left\\|\\sum▮\\right\\|");
     assert.equal(runAutoParen("\\bigl(\\sum▮\\bigr)"), "\\bigl(\\sum▮\\bigr)");
+    assert.equal(runAutoParen("\\bigl|\\sum▮\\bigr|"), "\\bigl|\\sum▮\\bigr|");
+    assert.equal(runAutoParen("\\Bigl\\|\\frac{a}{b}▮\\Bigr\\|"), "\\Bigl\\|\\frac{a}{b}▮\\Bigr\\|");
     assert.equal(runAutoParen("\\Bigl(\\frac{a}{b}▮\\Bigr)"), "\\Bigl(\\frac{a}{b}▮\\Bigr)");
     assert.equal(runAutoParen("\\big(\\sum▮\\big)"), "\\big(\\sum▮\\big)");
     assert.equal(runAutoParen("[0, \\sum▮)"), "[0, \\sum▮)");

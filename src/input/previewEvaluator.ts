@@ -4,7 +4,7 @@ import { MathParseOptions } from "../parser/types";
 import { buildRuleContext, expandTemplate } from "./contextBuilder";
 import { convertOutputDialect } from "./dialectConverter";
 import { expandRegexTemplate } from "./ruleEngine";
-import { InputRule, OutputDialect, RulePreviewResult } from "./types";
+import { InputRule, JsRuleFn, OutputDialect, RulePreviewResult } from "./types";
 import { validateRule } from "./validation";
 
 function formatTexForMathJax(rawTex: string): string {
@@ -152,7 +152,7 @@ export function evaluateRulePreview(
   }
 
   try {
-    const fn = new Function("ctx", rule.code);
+    const fn = new Function("ctx", rule.code) as JsRuleFn;
     const isAuto = rule.triggerMode === "auto";
     const before = isAuto ? sample.slice(0, -1) : sample;
     const key = isAuto ? sample.slice(-1) : "";

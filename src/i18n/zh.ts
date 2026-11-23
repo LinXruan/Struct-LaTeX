@@ -54,7 +54,7 @@ export const ZH_MESSAGES: I18nMessages = {
   "settings.special.parseAmbiguousBars.name": "双竖线括号解析",
   "settings.special.parseAmbiguousBars.desc": "将同层偶数个 | 或 ∥ 两两配对为括号对象，奇数个在源码中标红提示",
   "settings.special.autoSizeParens.name": "小括号自动伸缩",
-  "settings.special.autoSizeParens.desc": "当普通小括号 (...) 内出现大符号或括号嵌套时，自动升级为 \\left(...\\right)",
+  "settings.special.autoSizeParens.desc": "当普通小括号 (...) 或竖线定界符（|...|、\\|...\\|、∥...∥）内出现大符号或括号嵌套时，自动升级为 \\left...\\right",
   "settings.special.inlineMathPreview.name": "行内公式实时渲染弹窗",
   "settings.special.inlineMathPreview.desc": "在实时预览模式下编辑行内公式（$...$ / \\(...\\)）时，在公式上方或下方显示实时渲染浮窗",
   "settings.special.inlineMathPreview.above": "在上方显示",

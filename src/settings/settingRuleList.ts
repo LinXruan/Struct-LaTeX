@@ -142,9 +142,8 @@ export class RuleListController {
     }
 
     const callbacks = this.buildCallbacks(this.previewManager);
-    const doc = container.ownerDocument;
-    const fragment = doc.createDocumentFragment();
-    const scratch = doc.createElement("div");
+    const fragment = createFragment();
+    const scratch = container.createDiv();
 
     for (const item of items) {
       const sig = this.getRowSignature(item.rule, item.isDraft);

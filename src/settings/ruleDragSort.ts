@@ -189,8 +189,7 @@ export function attachPointerDragSort(
       ghost.style.top = `${rowRect.top}px`;
       doc.body.appendChild(ghost);
 
-      placeholder = doc.createElement("div");
-      placeholder.className = "struct-latex-drop-placeholder";
+      placeholder = listEl.createDiv({ cls: "struct-latex-drop-placeholder" });
       placeholder.style.height = `${rowRect.height}px`;
       listEl.insertBefore(placeholder, row);
       row.addClass("struct-latex-hidden");

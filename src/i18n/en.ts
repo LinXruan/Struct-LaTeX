@@ -54,7 +54,7 @@ export const EN_MESSAGES: I18nMessages = {
   "settings.special.parseAmbiguousBars.name": "Ambiguous Bar Pairing",
   "settings.special.parseAmbiguousBars.desc": "Pair same-level even | or ∥ as flat brackets and highlight odd ones in red",
   "settings.special.autoSizeParens.name": "Auto-size Parentheses",
-  "settings.special.autoSizeParens.desc": "Automatically upgrade plain (...) to \\left(...\\right) when containing tall symbols or nested brackets",
+  "settings.special.autoSizeParens.desc": "Automatically upgrade plain (...) and bar delimiters (|...|, \\|...\\|, ∥...∥) to \\left...\\right when containing tall symbols or nested brackets",
   "settings.special.inlineMathPreview.name": "Inline Math Live Preview",
   "settings.special.inlineMathPreview.desc": "Show a live MathJax preview popup above or below inline formulas ($...$ / \\(...\\)) while editing in Live Preview",
   "settings.special.inlineMathPreview.above": "Show above",

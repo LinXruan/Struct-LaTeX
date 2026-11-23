@@ -1,6 +1,6 @@
-.struct-latex-odd-bar,
-.struct-latex-odd-bar * {
-  color: var(--text-error) !important;
+.markdown-source-view.mod-cm6 .cm-editor .cm-line .struct-latex-odd-bar,
+.markdown-source-view.mod-cm6 .cm-editor .cm-line .struct-latex-odd-bar * {
+  color: var(--text-error);
 }
 
 .cm-tooltip.struct-latex-inline-preview-tooltip {
@@ -22,19 +22,19 @@
   z-index: var(--layer-popover, 30);
 }
 
-.cm-tooltip.struct-latex-inline-preview-tooltip mjx-container {
+.cm-tooltip.struct-latex-inline-preview-tooltip .MathJax.MathJax {
   display: inline-flex;
   align-items: center;
-  margin: 0 !important;
-  padding: 0 !important;
+  margin: 0;
+  padding: 0;
   line-height: 1;
   font-size: 1em;
   max-width: 100%;
-  overflow: hidden !important;
+  overflow: hidden;
   scrollbar-width: none;
 }
 
-.cm-tooltip.struct-latex-inline-preview-tooltip mjx-container > svg {
+.cm-tooltip.struct-latex-inline-preview-tooltip .MathJax.MathJax > svg {
   display: block;
 }
 
@@ -44,12 +44,12 @@
   font-family: var(--font-monospace);
 }
 
-.struct-latex-hidden {
-  display: none !important;
+.struct-latex-hidden.struct-latex-hidden.struct-latex-hidden {
+  display: none;
 }
 
-.struct-latex-flip-none {
-  transition: none !important;
+.struct-latex-rule-row.struct-latex-flip-none {
+  transition: none;
 }
 
 .struct-latex-flip-animate {
@@ -218,15 +218,17 @@ body.theme-dark .struct-latex-logo-brace {
   background: color-mix(in srgb, var(--text-error) 8%, var(--background-secondary));
 }
 
-body.struct-latex-is-dragging {
-  cursor: grabbing !important;
-  user-select: none !important;
+body.struct-latex-is-dragging,
+body.struct-latex-is-dragging .struct-latex-drag-handle,
+body.struct-latex-is-dragging * {
+  cursor: grabbing;
+  user-select: none;
 }
 
-.struct-latex-drag-ghost {
+.struct-latex-rule-row.struct-latex-drag-ghost {
   position: fixed;
   z-index: 9999;
-  margin: 0 !important;
+  margin: 0;
   opacity: 0.78;
   pointer-events: none;
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.28);
@@ -345,8 +347,8 @@ body.struct-latex-is-dragging {
   padding: 0 4px;
 }
 
-.struct-latex-rule-preview mjx-container {
-  margin: 0 !important;
+.struct-latex-rule-preview .MathJax.MathJax {
+  margin: 0;
   font-size: 105%;
 }
 
@@ -396,7 +398,7 @@ body.struct-latex-is-dragging {
 
 .struct-latex-subpage-header .struct-latex-editor-title,
 .struct-latex-editor-header .struct-latex-editor-title {
-  margin: 0 !important;
+  margin: 0;
   padding: 0;
   line-height: 1.25;
 }
