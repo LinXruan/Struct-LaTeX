@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg" />
-    <source media="(prefers-color-scheme: light)" srcset="assets/logo-light.svg" />
-    <img src="assets/logo-light.svg" alt="Struct LaTeX" width="320" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/LinXruan/Struct-LaTeX/main/assets/logo-dark.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/LinXruan/Struct-LaTeX/main/assets/logo-light.svg" />
+    <img src="https://raw.githubusercontent.com/LinXruan/Struct-LaTeX/main/assets/logo.svg" alt="Struct LaTeX" width="320" />
   </picture>
 </p>
 
@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> · <strong>简体中文</strong>
+  <a href="https://github.com/LinXruan/Struct-LaTeX/blob/main/README.md">English</a> · <strong>简体中文</strong>
 </p>
 
 **Obsidian 强大的 LaTeX 编辑插件**，基于**解析树**而非正则
@@ -33,3 +33,6 @@
 - **完善的默认输入逻辑**：涵盖几乎所有的数学输入
 - **JavaScript接口**：支持上限极高的复杂编辑
 - **轻量极速**：局部解析当前公式块，响应低于 0.1 ms
+
+## 下载与安装
+- 插件已上传至第三方插件库：https://community.obsidian.md/plugins/struct-latex

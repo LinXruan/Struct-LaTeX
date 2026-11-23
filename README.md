@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg" />
-    <source media="(prefers-color-scheme: light)" srcset="assets/logo-light.svg" />
-    <img src="assets/logo-light.svg" alt="Struct LaTeX" width="320" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/LinXruan/Struct-LaTeX/main/assets/logo-dark.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/LinXruan/Struct-LaTeX/main/assets/logo-light.svg" />
+    <img src="https://raw.githubusercontent.com/LinXruan/Struct-LaTeX/main/assets/logo.svg" alt="Struct LaTeX" width="320" />
   </picture>
 </p>
 
@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <strong>English</strong> · <a href="README.zh.md">简体中文</a>
+  <strong>English</strong> · <a href="https://github.com/LinXruan/Struct-LaTeX/blob/main/README.zh.md">简体中文</a>
 </p>
 
 **A powerful LaTeX editing plugin for Obsidian**, powered by a **parse tree** instead of regex.
@@ -33,3 +33,6 @@
 - **Comprehensive Built-in Rules**: Covers nearly all common mathematical input workflows
 - **JavaScript API**: Enables highly extensible, complex editing behaviors
 - **Lightweight & Fast**: Locally parses only the active math block with sub-0.1 ms response time
+
+## Download & Installation
+- Uploaded to the Community Plugins directory: https://community.obsidian.md/plugins/struct-latex
