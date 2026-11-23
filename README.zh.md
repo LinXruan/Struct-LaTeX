@@ -27,6 +27,7 @@
 - **光标跳转**：按照**解析树层级**智能光标跳转
 - **智能输入**：支持**JavaScript接口、正则、纯替换**
 - **括号自适应**：支持自动检测括号内容变大括号
+- **内联数学式实时渲染**：还可以调整显示位置
 
 ## 亮点
 - **解析树引擎**：告别数百条嵌套正则的规则冲突与层数上限，实现**无限深度嵌套**
@@ -34,6 +35,21 @@
 - **完善的默认输入逻辑**：涵盖几乎所有的数学输入
 - **JavaScript接口**：支持上限极高的复杂编辑
 - **轻量极速**：局部解析当前公式块，响应低于 0.1 ms
+
+## 截图
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LinXruan/Struct-LaTeX/main/assets/3.png" alt="内联数学式实时渲染" width="720" />
+  <br />
+  <sub>内联数学式实时渲染</sub>
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LinXruan/Struct-LaTeX/main/assets/1.jpg" alt="光标跳转设置" width="300" />
+  <img src="https://raw.githubusercontent.com/LinXruan/Struct-LaTeX/main/assets/2.png" alt="内置输入规则" width="500" />
+  <br />
+  <sub>光标跳转与输入规则设置 · 内置 JavaScript 规则</sub>
+</p>
 
 ## 下载与安装
 - 插件已上传至第三方插件库：https://community.obsidian.md/plugins/struct-latex

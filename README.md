@@ -26,6 +26,7 @@
 - **Structural Deletion**: Delete matrices, fractions, radicals, scripts, brackets, and functions as complete units along the **parse tree hierarchy**
 - **Smart Cursor Jumping**: Jump the cursor intelligently along the **parse tree hierarchy**
 - **Smart Input**: Supports **JavaScript API, regex, and plain text replacement**
+- **Real-time rendering of inline math**: The display position can also be adjusted.
 
 ## Highlights
 - **Parse Tree Engine**: Say goodbye to rule conflicts and depth limits of hundreds of nested regexes, achieving **infinite nesting depth**
@@ -34,6 +35,21 @@
 - **JavaScript API**: Enables highly extensible, complex editing behaviors
 - **Lightweight & Fast**: Locally parses only the active math block with sub-0.1 ms response time
 - **Adaptive brackets**: Supports automatically detecting bracket content and converting it to curly braces.
+
+## Screenshots
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LinXruan/Struct-LaTeX/main/assets/3.png" alt="Real-time inline math rendering" width="720" />
+  <br />
+  <sub>Real-time inline math rendering</sub>
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/LinXruan/Struct-LaTeX/main/assets/1.jpg" alt="Cursor Jump settings" width="300" />
+  <img src="https://raw.githubusercontent.com/LinXruan/Struct-LaTeX/main/assets/2.png" alt="Built-in input rules" width="500" />
+  <br />
+  <sub>Cursor Jump &amp; input rule settings · built-in JavaScript rules</sub>
+</p>
 
 ## Download & Installation
 - Uploaded to the Community Plugins directory: https://community.obsidian.md/plugins/struct-latex
