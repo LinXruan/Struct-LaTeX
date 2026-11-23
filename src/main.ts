@@ -3,6 +3,10 @@ import { EditorView } from "@codemirror/view";
 import * as obsidianApi from "obsidian";
 import { MarkdownView, Notice, Platform, Plugin, moment } from "obsidian";
 import { createAutoParenSizeExtension } from "./editor/autoDelim";
+import {
+  createInlineMathPreviewExtension,
+  refreshInlineMathPreviewEffect,
+} from "./editor/inlineMathPreview";
 import { createOddBarHighlightExtension, refreshOddBarsEffect } from "./editor/oddBarHighlight";
 import { createSmartBackspaceExtension, executeSmartBackspace } from "./editor/smartBackspace";
 import { createSmartInputExtension } from "./editor/smartInput";
@@ -112,6 +116,9 @@ export default class StructLatexPlugin extends Plugin {
       }),
       createOddBarHighlightExtension({
         isEnabled: () => this.settings.parseAmbiguousBars,
+      }),
+      createInlineMathPreviewExtension({
+        getPosition: () => this.settings.inlineMathPreview,
       })
     );
 
@@ -154,7 +161,9 @@ export default class StructLatexPlugin extends Plugin {
     this.app.workspace.iterateAllLeaves((leaf) => {
       if (!(leaf.view instanceof MarkdownView)) return;
       const cm = (leaf.view.editor as unknown as { cm?: EditorView })?.cm;
-      cm?.dispatch({ effects: refreshOddBarsEffect.of(null) });
+      cm?.dispatch({
+        effects: [refreshOddBarsEffect.of(null), refreshInlineMathPreviewEffect.of(null)],
+      });
     });
   }
 
@@ -177,6 +186,12 @@ export default class StructLatexPlugin extends Plugin {
       typeof loaded?.autoSizeParens === "boolean"
         ? loaded.autoSizeParens
         : DEFAULT_PLUGIN_SETTINGS.autoSizeParens;
+    this.settings.inlineMathPreview =
+      loaded?.inlineMathPreview === "above" ||
+      loaded?.inlineMathPreview === "below" ||
+      loaded?.inlineMathPreview === "off"
+        ? loaded.inlineMathPreview
+        : DEFAULT_PLUGIN_SETTINGS.inlineMathPreview;
     this.settings.mobileToolbarInitialized =
       typeof loaded?.mobileToolbarInitialized === "boolean"
         ? loaded.mobileToolbarInitialized

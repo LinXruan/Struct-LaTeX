@@ -55,6 +55,11 @@ export interface I18nMessages {
   "settings.special.parseAmbiguousBars.desc": string;
   "settings.special.autoSizeParens.name": string;
   "settings.special.autoSizeParens.desc": string;
+  "settings.special.inlineMathPreview.name": string;
+  "settings.special.inlineMathPreview.desc": string;
+  "settings.special.inlineMathPreview.above": string;
+  "settings.special.inlineMathPreview.below": string;
+  "settings.special.inlineMathPreview.off": string;
   "settings.about.version": string;
   "settings.about.author": string;
   "settings.about.repo": string;

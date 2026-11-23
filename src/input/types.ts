@@ -5,6 +5,7 @@ export type RuleType = "text" | "regex" | "js";
 export type RuleScope = "math" | "text" | "any";
 export type TriggerMode = "auto" | "confirm" | "hotkey";
 export type OutputDialect = "latex" | "unicode" | "raw";
+export type InlineMathPreviewPosition = "above" | "below" | "off";
 
 export interface RuleGuardOptions {
   /** Disallow triggering when immediately preceded by an ASCII letter `[a-zA-Z]` */
@@ -68,6 +69,7 @@ export interface PluginSettings {
   outputDialect: OutputDialect;
   parseAmbiguousBars: boolean;
   autoSizeParens: boolean;
+  inlineMathPreview: InlineMathPreviewPosition;
   mobileToolbarInitialized: boolean;
 }
 
@@ -81,6 +83,7 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   outputDialect: "latex",
   parseAmbiguousBars: true,
   autoSizeParens: true,
+  inlineMathPreview: "below",
   mobileToolbarInitialized: false,
 };
 

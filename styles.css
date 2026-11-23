@@ -3,6 +3,44 @@
   color: var(--text-error) !important;
 }
 
+.cm-tooltip.struct-latex-inline-preview-tooltip {
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-text-size, 1em);
+  line-height: 1;
+  padding: 0.14em 0.45em;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background-color: var(--background-primary);
+  color: var(--text-normal);
+  box-shadow: var(--shadow-s, 0 4px 14px rgba(0, 0, 0, 0.14));
+  max-width: min(36em, 90vw);
+  overflow-x: auto;
+  overflow-y: hidden;
+  z-index: var(--layer-popover, 30);
+}
+
+.cm-tooltip.struct-latex-inline-preview-tooltip mjx-container {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1;
+  font-size: 1em;
+}
+
+.cm-tooltip.struct-latex-inline-preview-tooltip mjx-container > svg {
+  display: block;
+}
+
+.struct-latex-inline-preview-error {
+  color: var(--text-error);
+  font-size: 12px;
+  font-family: var(--font-monospace);
+}
+
 .struct-latex-hidden {
   display: none !important;
 }

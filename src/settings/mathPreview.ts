@@ -1,40 +1,15 @@
-import { finishRenderMath, loadMathJax, renderMath } from "obsidian";
+import {
+  ensureMathJax,
+  getCachedTexDom,
+  renderTexToElement,
+  scheduleFinishRenderMath,
+} from "../editor/mathJaxCache";
 import { t } from "../i18n";
 import { RulePreviewResult } from "../input/types";
 
-const MAX_TEX_CACHE = 512;
 const FRAME_BUDGET_MS = 6;
 const MAX_UNCACHED_PER_FRAME = 4;
 const MAX_CACHED_PER_FRAME = 24;
-
-let mathJaxReadyPromise: Promise<void> | null = null;
-let flushTimer: number | null = null;
-const texDomCache = new Map<string, HTMLElement>();
-
-function ensureMathJax(): Promise<void> {
-  if (!mathJaxReadyPromise) {
-    mathJaxReadyPromise = loadMathJax().catch(() => {
-      mathJaxReadyPromise = null;
-    });
-  }
-  return mathJaxReadyPromise;
-}
-
-function scheduleFinishRenderMath(): void {
-  if (flushTimer !== null) return;
-  flushTimer = window.setTimeout(() => {
-    flushTimer = null;
-    void finishRenderMath();
-  }, 40);
-}
-
-function setCachedDom(tex: string, node: HTMLElement): void {
-  if (texDomCache.size >= MAX_TEX_CACHE) {
-    const oldestKey = texDomCache.keys().next().value;
-    if (oldestKey !== undefined) texDomCache.delete(oldestKey);
-  }
-  texDomCache.set(tex, node.cloneNode(true) as HTMLElement);
-}
 
 function findScrollRoot(el: HTMLElement): HTMLElement | null {
   const win = el.ownerDocument.defaultView ?? window;
@@ -62,25 +37,20 @@ function applyPreviewErrorOrCache(el: HTMLElement, preview: RulePreviewResult): 
 
   el.setAttr("title", preview.rawOutput ? t("preview.outputTooltip", { output: preview.rawOutput }) : "");
 
-  const cached = texDomCache.get(preview.tex);
+  const cached = getCachedTexDom(preview.tex, false);
   if (cached) {
-    el.appendChild(cached.cloneNode(true));
+    el.appendChild(cached);
     return true;
   }
   return false;
 }
 
 function renderUncachedMath(el: HTMLElement, tex: string): boolean {
-  try {
-    const rendered = renderMath(tex, false);
-    setCachedDom(tex, rendered);
-    el.appendChild(rendered);
-    return true;
-  } catch (err) {
-    el.addClass("struct-latex-preview-error");
-    el.setText(t("preview.renderError", { msg: (err as Error).message }));
-    return false;
-  }
+  const res = renderTexToElement(el, tex, false);
+  if (res.ok) return true;
+  el.addClass("struct-latex-preview-error");
+  el.setText(t("preview.renderError", { msg: res.error ?? "" }));
+  return false;
 }
 
 export function renderMathPreviewNow(el: HTMLElement, preview: RulePreviewResult): void {

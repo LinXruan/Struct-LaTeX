@@ -1,5 +1,6 @@
 import { PluginManifest, Setting } from "obsidian";
 import { t } from "../i18n";
+import { InlineMathPreviewPosition } from "../input/types";
 import { GeneralSettingsHost } from "./settingGeneralSection";
 
 const REPO_URL = "https://github.com/LinXruan/Struct-LaTeX";
@@ -38,6 +39,22 @@ export function renderSpecialSettingsPage(parent: HTMLElement, host: GeneralSett
         host.settings.autoSizeParens = v;
         await host.saveSettings();
       })
+    );
+
+  new Setting(parent)
+    .setName(t("settings.special.inlineMathPreview.name"))
+    .setDesc(t("settings.special.inlineMathPreview.desc"))
+    .addDropdown((dd) =>
+      dd
+        .addOption("below", t("settings.special.inlineMathPreview.below"))
+        .addOption("above", t("settings.special.inlineMathPreview.above"))
+        .addOption("off", t("settings.special.inlineMathPreview.off"))
+        .setValue(host.settings.inlineMathPreview)
+        .onChange(async (v) => {
+          host.settings.inlineMathPreview = v as InlineMathPreviewPosition;
+          await host.saveSettings();
+          host.onSpecialSettingsChanged?.();
+        })
     );
 }
 
