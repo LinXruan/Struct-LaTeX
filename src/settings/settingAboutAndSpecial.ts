@@ -29,6 +29,16 @@ export function renderSpecialSettingsPage(parent: HTMLElement, host: GeneralSett
         host.onSpecialSettingsChanged?.();
       })
     );
+
+  new Setting(parent)
+    .setName(t("settings.special.autoSizeParens.name"))
+    .setDesc(t("settings.special.autoSizeParens.desc"))
+    .addToggle((toggle) =>
+      toggle.setValue(host.settings.autoSizeParens).onChange(async (v) => {
+        host.settings.autoSizeParens = v;
+        await host.saveSettings();
+      })
+    );
 }
 
 export function renderAboutPage(parent: HTMLElement, manifest: PluginManifest): void {

@@ -53,6 +53,8 @@ export interface I18nMessages {
   "settings.nav.aboutDesc": string;
   "settings.special.parseAmbiguousBars.name": string;
   "settings.special.parseAmbiguousBars.desc": string;
+  "settings.special.autoSizeParens.name": string;
+  "settings.special.autoSizeParens.desc": string;
   "settings.about.version": string;
   "settings.about.author": string;
   "settings.about.repo": string;

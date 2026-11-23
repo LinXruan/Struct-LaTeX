@@ -67,6 +67,7 @@ export interface PluginSettings {
   smartJumpKey: string;
   outputDialect: OutputDialect;
   parseAmbiguousBars: boolean;
+  autoSizeParens: boolean;
   mobileToolbarInitialized: boolean;
 }
 
@@ -79,6 +80,7 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   smartJumpKey: "Tab",
   outputDialect: "latex",
   parseAmbiguousBars: true,
+  autoSizeParens: true,
   mobileToolbarInitialized: false,
 };
 

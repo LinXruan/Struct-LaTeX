@@ -53,6 +53,8 @@ export const EN_MESSAGES: I18nMessages = {
   "settings.nav.aboutDesc": "Version, repository, and license",
   "settings.special.parseAmbiguousBars.name": "Ambiguous Bar Pairing",
   "settings.special.parseAmbiguousBars.desc": "Pair same-level even | or ∥ as flat brackets and highlight odd ones in red",
+  "settings.special.autoSizeParens.name": "Auto-size Parentheses",
+  "settings.special.autoSizeParens.desc": "Automatically upgrade plain (...) to \\left(...\\right) when containing tall symbols or nested brackets",
   "settings.about.version": "Version",
   "settings.about.author": "Author",
   "settings.about.repo": "Repository",

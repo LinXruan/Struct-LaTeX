@@ -53,6 +53,8 @@ export const ZH_MESSAGES: I18nMessages = {
   "settings.nav.aboutDesc": "版本信息、项目地址与开源协议",
   "settings.special.parseAmbiguousBars.name": "双竖线括号解析",
   "settings.special.parseAmbiguousBars.desc": "将同层偶数个 | 或 ∥ 两两配对为括号对象，奇数个在源码中标红提示",
+  "settings.special.autoSizeParens.name": "小括号自动伸缩",
+  "settings.special.autoSizeParens.desc": "当普通小括号 (...) 内出现大符号或括号嵌套时，自动升级为 \\left(...\\right)",
   "settings.about.version": "当前版本",
   "settings.about.author": "作者",
   "settings.about.repo": "项目地址",

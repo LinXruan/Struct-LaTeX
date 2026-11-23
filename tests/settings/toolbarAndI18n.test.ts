@@ -178,8 +178,11 @@ describe("Feature Keybind Matching & Plugin Settings Defaults", () => {
     assert.equal(DEFAULT_PLUGIN_SETTINGS.smartBackspaceKey, "Backspace");
     assert.equal(DEFAULT_PLUGIN_SETTINGS.smartJumpKey, "Tab");
     assert.equal(DEFAULT_PLUGIN_SETTINGS.parseAmbiguousBars, true);
+    assert.equal(DEFAULT_PLUGIN_SETTINGS.autoSizeParens, true);
     assert.ok(t("settings.special.parseAmbiguousBars.name", undefined, "zh").includes("双竖线"));
     assert.ok(t("settings.special.parseAmbiguousBars.name", undefined, "en").includes("Bar"));
+    assert.ok(t("settings.special.autoSizeParens.name", undefined, "zh").includes("小括号"));
+    assert.ok(t("settings.special.autoSizeParens.name", undefined, "en").includes("Parentheses"));
 
     assert.equal(resolveFeatureKeybind("alt+d", "Backspace"), "Alt+D");
     assert.equal(resolveFeatureKeybind("shift+tab", "Tab"), "Shift+Tab");

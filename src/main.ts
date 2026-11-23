@@ -2,6 +2,7 @@ import { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import * as obsidianApi from "obsidian";
 import { MarkdownView, Notice, Platform, Plugin, moment } from "obsidian";
+import { createAutoParenSizeExtension } from "./editor/autoDelim";
 import { createOddBarHighlightExtension, refreshOddBarsEffect } from "./editor/oddBarHighlight";
 import { createSmartBackspaceExtension, executeSmartBackspace } from "./editor/smartBackspace";
 import { createSmartInputExtension } from "./editor/smartInput";
@@ -105,6 +106,10 @@ export default class StructLatexPlugin extends Plugin {
         isMac: Platform.isMacOS,
         onJsError: (rule, message) => this.notifyJsError(rule.name, message),
       }),
+      createAutoParenSizeExtension({
+        isEnabled: () => this.settings.autoSizeParens,
+        getParseAmbiguousBars: () => this.settings.parseAmbiguousBars,
+      }),
       createOddBarHighlightExtension({
         isEnabled: () => this.settings.parseAmbiguousBars,
       })
@@ -168,6 +173,10 @@ export default class StructLatexPlugin extends Plugin {
       typeof loaded?.parseAmbiguousBars === "boolean"
         ? loaded.parseAmbiguousBars
         : DEFAULT_PLUGIN_SETTINGS.parseAmbiguousBars;
+    this.settings.autoSizeParens =
+      typeof loaded?.autoSizeParens === "boolean"
+        ? loaded.autoSizeParens
+        : DEFAULT_PLUGIN_SETTINGS.autoSizeParens;
     this.settings.mobileToolbarInitialized =
       typeof loaded?.mobileToolbarInitialized === "boolean"
         ? loaded.mobileToolbarInitialized

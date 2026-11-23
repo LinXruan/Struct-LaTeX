@@ -33,6 +33,7 @@
 - **Comprehensive Built-in Rules**: Covers nearly all common mathematical input workflows
 - **JavaScript API**: Enables highly extensible, complex editing behaviors
 - **Lightweight & Fast**: Locally parses only the active math block with sub-0.1 ms response time
+- **Adaptive brackets**: Supports automatically detecting bracket content and converting it to curly braces.
 
 ## Download & Installation
 - Uploaded to the Community Plugins directory: https://community.obsidian.md/plugins/struct-latex
