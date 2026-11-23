@@ -28,6 +28,10 @@ export function ensureMathJax(): Promise<void> {
   return mathJaxReadyPromise;
 }
 
+export function flushFinishRenderMath(): Promise<void> {
+  return finishRenderMath();
+}
+
 export function scheduleFinishRenderMath(delayMs = 40): void {
   if (delayMs <= 0) {
     void finishRenderMath();

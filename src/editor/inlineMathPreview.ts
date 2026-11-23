@@ -16,9 +16,9 @@ import {
 } from "./inlineMathPreviewState";
 import {
   ensureMathJax,
+  flushFinishRenderMath,
   isMathJaxLoaded,
   renderTexToElement,
-  scheduleFinishRenderMath,
 } from "./mathJaxCache";
 
 export const refreshInlineMathPreviewEffect = StateEffect.define<null>();
@@ -54,7 +54,9 @@ function renderIntoTooltipDom(view: EditorView, dom: HTMLElement, tex: string): 
       return;
     }
     if (!res.cached) {
-      scheduleFinishRenderMath(0);
+      void flushFinishRenderMath().then(() => {
+        if (dom.isConnected) repositionTooltips(view);
+      });
     }
   };
 

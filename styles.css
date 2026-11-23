@@ -7,7 +7,7 @@
   pointer-events: none;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   font-size: var(--font-text-size, 1em);
   line-height: 1;
   padding: 0.14em 0.45em;
@@ -16,9 +16,9 @@
   background-color: var(--background-primary);
   color: var(--text-normal);
   box-shadow: var(--shadow-s, 0 4px 14px rgba(0, 0, 0, 0.14));
-  max-width: min(36em, 90vw);
-  overflow-x: auto;
-  overflow-y: hidden;
+  max-width: min(48em, calc(100vw - 24px));
+  overflow: hidden;
+  scrollbar-width: none;
   z-index: var(--layer-popover, 30);
 }
 
@@ -29,6 +29,9 @@
   padding: 0 !important;
   line-height: 1;
   font-size: 1em;
+  max-width: 100%;
+  overflow: hidden !important;
+  scrollbar-width: none;
 }
 
 .cm-tooltip.struct-latex-inline-preview-tooltip mjx-container > svg {

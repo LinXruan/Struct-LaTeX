@@ -23,7 +23,7 @@
    - 抽离 `loadMathJax()` / `renderMath()` / `finishRenderMath()` 及 LRU DOM 缓存至 `src/editor/mathJaxCache.ts`，由设置页与编辑器浮窗共同复用；
    - 使用 CM6 `showTooltip.compute` 以 `[region.blockFrom, region.blockTo]` 为锚点区间，避免光标在公式内移动时浮窗横向抖动；
    - `above` 由设置决定，`strictSide: false` 允许在视口顶部/底部空间不足时自动翻转；
-   - 弹窗采用 `display: inline-flex; align-items: center; line-height: 1` 与相对单位 `padding: 0.14em 0.45em`（并对 `mjx-container > svg` 设为 `display: block`），消除块级行盒与基线对齐造成的顶部多余留白；通过 `--font-text-size` 与 `getComputedStyle(view.contentDOM).fontSize` 同步保证在任意 Obsidian 正文字号与缩放下 1:1 等大展示；
+   - 弹窗采用 `display: inline-flex; align-items: center; justify-content: flex-start; line-height: 1`、相对单位 `padding: 0.14em 0.45em`（并对 `mjx-container > svg` 设为 `display: block`），且外层与内部 `mjx-container` 统一设 `overflow: hidden` 彻底禁止横滑条（规避亚像素舍入与超长公式出现滚动条），并在 `finishRenderMath()` 完成后自动调用 `repositionTooltips` 重测位置；通过 `--font-text-size` 与 `getComputedStyle(view.contentDOM).fontSize` 同步保证在任意 Obsidian 正文字号与缩放下 1:1 等大展示；
    - 浮窗设 `pointer-events: none` 保持鼠标穿透；未闭合或错误语法直接展示 `renderMath(tex, false)` 的原生 MathJax 输出（含 `.mjx-merror`），与 Obsidian 默认公式错误展示一致。
 
 ---

@@ -6,11 +6,11 @@ release标题：同tag
 
 更新说明：
 ### 新增：
-xxx
+- xxx
 ### 修复：
-xxx
+- xxx
 ### 优化：
-xxx
+- xxx
 
 release附件：
 上传release包即可
