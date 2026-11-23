@@ -43,7 +43,10 @@
 2. 涉及编辑器行为改动时，将 `manifest.json`、`main.js` 与 `styles.css` 同步至测试仓库并在真实 Obsidian 中实测对应场景，确认控制台零报错且不破坏原生输入、缩进、撤销栈与 IME。
 3. 仓库与测试仓库均不残留临时笔记、日志、截图或备份文件；行为变化已同步更新 `PLAN/` 与相关文档。
 
-## 5. 提交规范
+## 5. 版本管理与提交规范
 
-- 提交信息：`pl_<n>：<一句话变更>`（与对应 `PLAN/PLAN_<n>.md` 编号一致；合并多项可写 `pl_<n>,<m>：...`）。
+- **双轨版本管理（类 Android `versionName` + `versionCode`）**：
+  - **发布版本（`version`）**：`manifest.json`、`package.json`、`package-lock.json` 与 `versions.json` 中的语义化版本（如 `1.0.0`、`1.0.1`、`1.0.2`），**绝不自动更新**，仅在明确要求发版时手动/显式升级并按 [RELEASE.md](RELEASE.md) 发布 Tag。
+  - **内部版本号（`BUILD_TAG`）**：位于 `src/settings/settingAboutAndSpecial.ts` 的 `BUILD_TAG`（显示于「设置 → 关于 → 当前版本」旁括号内，如 `v1.0.2 (119)`），**每次改动/提交前自动 +1 迭代**（沿 `git log` 最新流水号递增）。
+- **提交信息**：`<版本号>_pl_<n>：<一句话变更>`（与对应 `PLAN/PLAN_<n>.md` 编号及 `BUILD_TAG` 一致；合并多项可写 `<版本号>_pl_<n>,<m>：...`，明确发版时可附 `_<version>`）。
 - 不提交 `node_modules/`、临时调试日志/截图或本地环境配置。
