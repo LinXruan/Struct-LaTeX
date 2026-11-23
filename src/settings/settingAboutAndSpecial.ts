@@ -4,6 +4,7 @@ import { InlineMathPreviewPosition } from "../input/types";
 import { GeneralSettingsHost } from "./settingGeneralSection";
 
 const REPO_URL = "https://github.com/LinXruan/Struct-LaTeX";
+const BUILD_TAG = "117";
 const LICENSE_URL = "https://github.com/LinXruan/Struct-LaTeX/blob/main/LICENSE";
 
 const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 343 94" fill="none" aria-label="Struct LaTeX">
@@ -68,7 +69,7 @@ export function renderAboutPage(parent: HTMLElement, manifest: PluginManifest): 
 
   new Setting(parent)
     .setName(t("settings.about.version"))
-    .setDesc(`v${manifest.version}`);
+    .setDesc(`v${manifest.version} (${BUILD_TAG})`);
 
   new Setting(parent)
     .setName(t("settings.about.author"))

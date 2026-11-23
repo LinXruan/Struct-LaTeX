@@ -175,7 +175,7 @@ describe("Structural Delete — Delimiters, Mixed Intervals, Bare Bars & Align B
   it("ignores bare `|` when disabled and always ignores `<` `>` as brackets", () => {
     expectDelete("P(A|B)▮", "P▮");
     expectNative("|x|▮", { parseAmbiguousBars: false });
-    expectNative("a < b▮");
+    expectDelete("a < b▮", "a <▮");
   });
 
   it("supports partial non-nested parsing for even `|` and `∥` and exposes odd bars", () => {
@@ -195,7 +195,7 @@ describe("Structural Delete — Delimiters, Mixed Intervals, Bare Bars & Align B
     expectDelete("| ∥x∥ |▮", "▮");
     expectDelete("| ∥x∥▮ |", "| ▮|");
     expectDelete("∥ |a| + |b| ∥▮", "▮");
-    expectDelete("\\left|a\\right| + |b|▮", "\\left|a\\right| + ▮");
+    expectDelete("\\left|a\\right| + |b|▮", "\\left|a\\right| +▮");
 
     // Same-level odd `|` or `∥`: none parsed, all recorded in oddBarSpans
     expectNative("(|a|▮+|b)");
@@ -213,7 +213,7 @@ describe("Structural Delete — Delimiters, Mixed Intervals, Bare Bars & Align B
 
     // Ordinary brackets isolate levels independently
     assert.deepEqual(buildMathTree("(A | B) + |c|").oddBarSpans, [{ from: 3, to: 4 }]);
-    expectDelete("(A | B) + |c|▮", "(A | B) + ▮");
+    expectDelete("(A | B) + |c|▮", "(A | B) +▮");
     assert.deepEqual(buildMathTree("|P(A|B)|").oddBarSpans, [{ from: 4, to: 5 }]);
     expectDelete("|P(A|B)|▮", "▮");
 
@@ -225,14 +225,14 @@ describe("Structural Delete — Delimiters, Mixed Intervals, Bare Bars & Align B
       { from: 25, to: 26 },
     ]);
     assert.deepEqual(buildMathTree("\\text{a | b} + |c|").oddBarSpans, []);
-    expectDelete("\\text{a | b} + |c|▮", "\\text{a | b} + ▮");
+    expectDelete("\\text{a | b} + |c|▮", "\\text{a | b} +▮");
     assert.deepEqual(buildMathTree("\\|a\\| + \\|b").oddBarSpans, []);
     assert.deepEqual(buildMathTree("(|a|+|b)", { parseAmbiguousBars: false }).oddBarSpans, []);
   });
 
   it("deletes composite align breaks as atomic words (with Scheme 1 trailing space)", () => {
     expectDelete("a \\\\ =&▮ b", "a ▮b");
-    expectDelete("a \\\\ ⇔&▮", "a ▮");
+    expectDelete("a \\\\ ⇔&▮", "a▮");
     expectDelete("1&2\\\\▮3&4", "1&2▮3&4");
   });
 });
@@ -246,7 +246,7 @@ describe("Structural Delete — Unified Whitespace & Text Mode Boundary", () => 
     expectDelete("a▮ _{2}   ^{3}", "▮");
     expectDelete("a _{2}   ▮^{3}", "a ▮^{3}");
     expectDelete("a _{2} ▮ ^{3}", "a ▮^{3}");
-    expectDelete("a _{2}   ^{3}▮", "a _{2}   ▮");
+    expectDelete("a _{2}   ^{3}▮", "a _{2}▮");
     expectDelete("\\sin ▮", "▮");
     expectDelete("\\sin ▮a", "▮a");
     expectDelete("\\begin{bmatrix}1&2\\end{bmatrix} ▮", "▮");
@@ -255,7 +255,7 @@ describe("Structural Delete — Unified Whitespace & Text Mode Boundary", () => 
   it("treats newlines identically to spaces for trailing whitespace absorption", () => {
     expectDelete("a + b\n    ▮c", "a + ▮c");
     expectDelete("a + b▮\n    c", "a + ▮c");
-    expectDelete("a\n_{2}▮", "a\n▮");
+    expectDelete("a\n_{2}▮", "a▮");
     expectDelete("a▮\n_{2}", "▮");
   });
 
@@ -274,6 +274,25 @@ describe("Structural Delete — Unified Whitespace & Text Mode Boundary", () => 
     expectDelete("\n\\begin{bmatrix}1&2\\\\3&4\\end{bmatrix}▮\n", "\n▮\n");
     expectDelete("\na_{2}▮\n", "\na▮\n");
     expectDelete("\na▮\n_{2}\n", "\n▮\n");
+  });
+
+  it("absorbs the predecessor's dangling separator when deleting the last entities of a container", () => {
+    // Root level (inline `$\sin \sum|$` stays renderable)
+    expectDelete("\\sin \\sum▮", "\\sin▮");
+    expectDelete("\\sin \\sum ▮", "\\sin▮");
+    expectDelete("a + b▮", "a +▮");
+    expectDelete("a + b\n    \\sum▮", "a + b▮");
+    // Successor survives: separator is kept
+    expectDelete("\\sin \\sum▮ x", "\\sin ▮x");
+    expectDelete("a + b▮ + c", "a + ▮+ c");
+    // Slot ends
+    expectDelete("\\frac{a}{b \\sum▮}", "\\frac{a}{b▮}");
+    expectDelete("\\left( a + \\frac{1}{2}▮\\right)", "\\left( a +▮\\right)");
+    // Root block math: protected trailing newline stays intact
+    expectDelete("\n\\sin \\sum▮\n", "\n\\sin▮\n");
+    expectDelete("\na + b\n    \\sum▮\n", "\na + b▮\n");
+    // Text-mode slots own no separators
+    expectDelete("\\text{a \\alpha▮}", "\\text{a ▮}");
   });
 
   it("absorbs leading whitespace (spaces & newlines) into bracket openers uniformly", () => {
@@ -297,7 +316,7 @@ describe("Structural Delete — Guards, Whitelist & Unmatched Degradation", () =
     expectDelete("\\sin[0, 1]▮", "\\sin▮");
     expectDelete("\\sin▮[0, 1]", "▮[0, 1]");
     expectDelete("\\mycmd{x}▮", "▮");
-    expectDelete("\\mycmd [0, 1]▮", "\\mycmd ▮");
+    expectDelete("\\mycmd [0, 1]▮", "\\mycmd▮");
   });
 
   it("preserves editability inside environment names, command spellings, and numbers", () => {
@@ -314,11 +333,11 @@ describe("Structural Delete — Guards, Whitelist & Unmatched Degradation", () =
     expectDelete("1 + (▮ 2 + 3", "1 + ▮2 + 3");
     expectNative("1 + \\left(▮2 + 3");
     expectDelete("1 + \\left(▮ 2 + 3", "1 + \\left▮2 + 3");
-    expectDelete("\\left( 1 + \\frac{a}{b}▮", "\\left( 1 + ▮");
+    expectDelete("\\left( 1 + \\frac{a}{b}▮", "\\left( 1 +▮");
   });
 
   it("handles UTF-16 surrogate-pair math symbols cleanly", () => {
     expectDelete("𝔸▮_{2}", "▮");
-    expectDelete("𝔸 + 𝔹▮", "𝔸 + ▮");
+    expectDelete("𝔸 + 𝔹▮", "𝔸 +▮");
   });
 });

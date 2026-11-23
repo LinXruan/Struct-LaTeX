@@ -69,6 +69,32 @@ export function computeDeleteClosureSpan(target: LatexObject): DeleteSpan {
   return { from: minFrom, to: maxTo };
 }
 
+function getSiblings(tree: MathTree, obj: LatexObject): readonly LatexObject[] {
+  if (!obj.parent) return tree.roots;
+  const slot = obj.parent.slots.find((s) => s.children.includes(obj));
+  return slot ? slot.children : [];
+}
+
+/**
+ * Trailing whitespace is a separator owned by the predecessor. When the delete span removes the
+ * last entities of its container, that separator loses its successor and is removed as well
+ * (e.g. `$\sin \sum|$` -> `$\sin|$`, keeping inline math renderable).
+ */
+function absorbDanglingSeparator(
+  tree: MathTree,
+  target: LatexObject,
+  span: DeleteSpan
+): DeleteSpan {
+  const siblings = getSiblings(tree, target);
+  let prev: LatexObject | undefined;
+  for (const sib of siblings) {
+    if (sib.coreFrom >= span.to) return span;
+    if (sib.to === span.from) prev = sib;
+  }
+  if (!prev || prev.coreTo >= prev.to) return span;
+  return { from: prev.coreTo, to: span.to };
+}
+
 /**
  * Resolves the structural delete span in math-block-relative coordinates.
  * Returns `null` when no structural trigger is hit or when deletion equals a plain 1-char Backspace,
@@ -80,7 +106,7 @@ export function resolveStructuralDelete(tree: MathTree, relPos: number): DeleteS
   const target = findTriggeredObject(tree, relPos);
   if (!target) return null;
 
-  const span = computeDeleteClosureSpan(target);
+  const span = absorbDanglingSeparator(tree, target, computeDeleteClosureSpan(target));
 
   // Fast-path fallback: identical to native single-character Backspace
   if (span.from === relPos - 1 && span.to === relPos) {
