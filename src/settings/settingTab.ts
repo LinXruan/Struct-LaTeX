@@ -15,6 +15,7 @@ import {
   SettingsPage,
   SettingsSubPage,
 } from "./settingGeneralSection";
+import { JumpSubPage, renderJumpSection } from "./settingJumpSection";
 import { RuleListController } from "./settingRuleList";
 import { createDraftRule, renderFilterToolbar, ToolbarHandle } from "./settingToolbar";
 import { renderTriggerRuleEditorView } from "./triggerRowAndEditor";
@@ -32,6 +33,7 @@ export interface StructLatexSettingHost extends Plugin {
 
 export class StructLatexSettingTab extends PluginSettingTab {
   private activePage: SettingsPage = "home";
+  private activeJumpMode: JumpSubPage | null = null;
   private homeViewEl: HTMLElement | null = null;
   private subPageEl: HTMLElement | null = null;
   private editorViewEl: HTMLElement | null = null;
@@ -55,16 +57,22 @@ export class StructLatexSettingTab extends PluginSettingTab {
     });
   }
 
-  private findScrollAncestor(startEl: HTMLElement | null): HTMLElement | null {
+  private scrollToY(top = 0): number {
     const win = this.containerEl.ownerDocument.defaultView ?? window;
-    for (let cur = startEl; cur; cur = cur.parentElement) {
+    for (let cur: HTMLElement | null = this.containerEl; cur; cur = cur.parentElement) {
       const overflowY = win.getComputedStyle(cur).overflowY;
-      if (overflowY === "auto" || overflowY === "scroll") return cur;
+      if (overflowY === "auto" || overflowY === "scroll") {
+        const prev = cur.scrollTop;
+        cur.scrollTop = top;
+        return prev;
+      }
     }
-    return null;
+    return 0;
   }
 
-  private clearInputTabRefs(): void {
+  private clearSubPageState(): void {
+    this.disposeSubPage?.();
+    this.disposeSubPage = null;
     this.ruleList.destroy();
     this.activeInlinePanel = null;
     this.inlinePanelEl = null;
@@ -73,11 +81,9 @@ export class StructLatexSettingTab extends PluginSettingTab {
   }
 
   private resetTransientState(): void {
-    this.disposeSubPage?.();
-    this.disposeSubPage = null;
+    this.clearSubPageState();
     this.disposeEditor?.();
     this.disposeEditor = null;
-    this.clearInputTabRefs();
   }
 
   private closeInlinePanel(): void {
@@ -115,32 +121,34 @@ export class StructLatexSettingTab extends PluginSettingTab {
     this.editorViewEl?.empty();
     this.editorViewEl?.addClass("struct-latex-hidden");
     this.subPageEl?.removeClass("struct-latex-hidden");
-    const scroller = this.findScrollAncestor(this.containerEl);
-    if (scroller) scroller.scrollTop = this.savedScrollTop;
+    this.scrollToY(this.savedScrollTop);
   }
 
-  private openRuleEditor(target: InputRule, isNew: boolean): void {
+  private mountEditorView(renderFn: (hostEl: HTMLElement) => () => void): void {
     if (!this.subPageEl || !this.editorViewEl) return;
-    this.closeInlinePanel();
-    const scroller = this.findScrollAncestor(this.containerEl);
-    this.savedScrollTop = scroller ? scroller.scrollTop : 0;
-
+    this.savedScrollTop = this.scrollToY(0);
     this.subPageEl.addClass("struct-latex-hidden");
     this.editorViewEl.removeClass("struct-latex-hidden");
     this.disposeEditor?.();
-    this.disposeEditor = renderRuleEditorView(this.editorViewEl, {
-      rule: target,
-      dialect: this.host.settings.outputDialect,
-      parseAmbiguousBars: this.host.settings.parseAmbiguousBars,
-      isNew,
-      onSave: async (saved) => {
-        await this.ruleList.upsertAndSaveRule(saved, isNew);
-        this.closeRuleEditor();
-        this.refreshAfterRulesMutation();
-      },
-      onCancel: () => this.closeRuleEditor(),
-    });
-    if (scroller) scroller.scrollTop = 0;
+    this.disposeEditor = renderFn(this.editorViewEl);
+  }
+
+  private openRuleEditor(target: InputRule, isNew: boolean): void {
+    this.closeInlinePanel();
+    this.mountEditorView((el) =>
+      renderRuleEditorView(el, {
+        rule: target,
+        dialect: this.host.settings.outputDialect,
+        parseAmbiguousBars: this.host.settings.parseAmbiguousBars,
+        isNew,
+        onSave: async (saved) => {
+          await this.ruleList.upsertAndSaveRule(saved, isNew);
+          this.closeRuleEditor();
+          this.refreshAfterRulesMutation();
+        },
+        onCancel: () => this.closeRuleEditor(),
+      })
+    );
   }
 
   private openTriggerEditor(
@@ -149,25 +157,19 @@ export class StructLatexSettingTab extends PluginSettingTab {
     isNew: boolean,
     onSaved: (saved: TriggerRule, isNew: boolean) => Promise<void>
   ): void {
-    if (!this.subPageEl || !this.editorViewEl) return;
-    const scroller = this.findScrollAncestor(this.containerEl);
-    this.savedScrollTop = scroller ? scroller.scrollTop : 0;
-
-    this.subPageEl.addClass("struct-latex-hidden");
-    this.editorViewEl.removeClass("struct-latex-hidden");
-    this.disposeEditor?.();
-    this.disposeEditor = renderTriggerRuleEditorView(this.editorViewEl, {
-      rule: target,
-      category,
-      parseAmbiguousBars: this.host.settings.parseAmbiguousBars,
-      isNew,
-      onSave: async (saved) => {
-        await onSaved(saved, isNew);
-        this.closeRuleEditor();
-      },
-      onCancel: () => this.closeRuleEditor(),
-    });
-    if (scroller) scroller.scrollTop = 0;
+    this.mountEditorView((el) =>
+      renderTriggerRuleEditorView(el, {
+        rule: target,
+        category,
+        parseAmbiguousBars: this.host.settings.parseAmbiguousBars,
+        isNew,
+        onSave: async (saved) => {
+          await onSaved(saved, isNew);
+          this.closeRuleEditor();
+        },
+        onCancel: () => this.closeRuleEditor(),
+      })
+    );
   }
 
   private refreshAfterRulesMutation(): void {
@@ -180,31 +182,24 @@ export class StructLatexSettingTab extends PluginSettingTab {
     this.ruleList.render();
   }
 
-  private getSubPageTitle(page: SettingsSubPage): string {
-    return t(`settings.nav.${page}` as const);
-  }
-
   private openSubPage(page: SettingsSubPage): void {
     if (!this.homeViewEl || !this.subPageEl) return;
     this.activePage = page;
     this.homeViewEl.addClass("struct-latex-hidden");
     this.subPageEl.removeClass("struct-latex-hidden");
     this.renderSubPage(page);
-    const scroller = this.findScrollAncestor(this.containerEl);
-    if (scroller) scroller.scrollTop = 0;
+    this.scrollToY(0);
   }
 
   private backToHome(): void {
-    this.disposeSubPage?.();
-    this.disposeSubPage = null;
-    this.clearInputTabRefs();
+    this.clearSubPageState();
     this.ruleList.pendingNewTextDraft = null;
+    this.activeJumpMode = null;
     this.activePage = "home";
     this.subPageEl?.empty();
     this.subPageEl?.addClass("struct-latex-hidden");
     this.homeViewEl?.removeClass("struct-latex-hidden");
-    const scroller = this.findScrollAncestor(this.containerEl);
-    if (scroller) scroller.scrollTop = 0;
+    this.scrollToY(0);
   }
 
   private renderInputSubPage(container: HTMLElement): void {
@@ -212,59 +207,49 @@ export class StructLatexSettingTab extends PluginSettingTab {
       this.ruleList.clearCache();
       this.ruleList.render();
     });
-
     const loadErr = this.host.ruleStore.getLoadError();
     if (loadErr) {
       container.createDiv({ cls: "struct-latex-modal-error", text: t("settings.loadError", { err: loadErr }) });
     }
-
     const rules = this.host.ruleStore.getRules();
     this.addRuleSetting = renderAddRuleSetting(container, this.host.ruleStore.filePath, rules.length, {
-      onAddText: () => {
-        this.closeInlinePanel();
-        this.ruleList.startNewTextDraft();
-      },
+      onAddText: () => { this.closeInlinePanel(); this.ruleList.startNewTextDraft(); },
       onAddRegex: () => this.openRuleEditor(createDraftRule("regex"), true),
       onAddJs: () => this.openRuleEditor(createDraftRule("js"), true),
     });
-
     this.toolbarHandle = renderFilterToolbar(container, rules, this.ruleList.filter, () => this.ruleList.render(), {
       onExport: () => this.toggleInlinePanel("export"),
       onImport: () => this.toggleInlinePanel("import"),
       onReset: () => this.toggleInlinePanel("reset"),
     });
-
     this.inlinePanelEl = container.createDiv();
-    const listEl = container.createDiv({ cls: "struct-latex-rule-list" });
-    this.ruleList.setContainer(listEl);
+    this.ruleList.setContainer(container.createDiv({ cls: "struct-latex-rule-list" }));
     this.ruleList.render();
   }
 
   private renderSubPage(page: SettingsSubPage): void {
     const container = this.subPageEl;
     if (!container) return;
-
-    this.disposeSubPage?.();
-    this.disposeSubPage = null;
-    this.clearInputTabRefs();
+    this.clearSubPageState();
     container.empty();
+    const openTrig = (r: TriggerRule, c: TriggerCategory, n: boolean, s: (sr: TriggerRule, sn: boolean) => Promise<void>) =>
+      this.openTriggerEditor(r, c, n, s);
 
-    renderSubPageHeader(container, this.getSubPageTitle(page), () => this.backToHome());
-
-    if (page === "input") {
-      this.renderInputSubPage(container);
-    } else if (page === "delete" || page === "jump") {
-      this.disposeSubPage = renderFeatureCategoryPage(
-        container,
-        page,
-        this.host,
-        (rule, category, isNew, onSaved) => this.openTriggerEditor(rule, category, isNew, onSaved)
-      );
-    } else if (page === "special") {
-      renderSpecialSettingsPage(container, this.host);
-    } else {
-      renderAboutPage(container, this.host.manifest);
+    if (page === "jump") {
+      this.disposeSubPage = renderJumpSection(container, this.activeJumpMode, this.host, {
+        onBackHome: () => this.backToHome(),
+        onSelectMode: (mode) => { this.activeJumpMode = mode; this.renderSubPage("jump"); },
+        onBackToHub: () => { this.activeJumpMode = null; this.renderSubPage("jump"); },
+        onOpenTriggerEditor: openTrig,
+      });
+      return;
     }
+
+    renderSubPageHeader(container, t(`settings.nav.${page}` as const), () => this.backToHome());
+    if (page === "input") this.renderInputSubPage(container);
+    else if (page === "delete") this.disposeSubPage = renderFeatureCategoryPage(container, page, this.host, openTrig);
+    else if (page === "special") renderSpecialSettingsPage(container, this.host);
+    else renderAboutPage(container, this.host.manifest);
   }
 
   display(): void {
@@ -290,6 +275,7 @@ export class StructLatexSettingTab extends PluginSettingTab {
   hide(): void {
     this.resetTransientState();
     this.ruleList.pendingNewTextDraft = null;
+    this.activeJumpMode = null;
     this.activePage = "home";
   }
 }

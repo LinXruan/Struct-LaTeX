@@ -76,6 +76,18 @@ export interface I18nMessages {
   "settings.smartBackspace.desc": string;
   "settings.smartJump.name": string;
   "settings.smartJump.desc": string;
+  "settings.smartJumpRightMulti.name": string;
+  "settings.smartJumpRightMulti.desc": string;
+  "settings.jump.backToHub": string;
+  "settings.jump.comingSoon": string;
+  "settings.jump.rightSingle.name": string;
+  "settings.jump.rightSingle.desc": string;
+  "settings.jump.rightMulti.name": string;
+  "settings.jump.rightMulti.desc": string;
+  "settings.jump.leftSingle.name": string;
+  "settings.jump.leftSingle.desc": string;
+  "settings.jump.leftMulti.name": string;
+  "settings.jump.leftMulti.desc": string;
   "settings.keybind.resetDefault": string;
   "settings.keybind.invalid": string;
   "settings.keybind.name": string;
@@ -190,6 +202,7 @@ export interface I18nMessages {
   "modals.reset.confirm": string;
   "modals.reset.doneNotice": string;
   "command.smartJump": string;
+  "command.smartJumpRightMulti": string;
   "command.smartBackspace": string;
   "badge.type.match": string;
   "val.triggerFileRoot": string;

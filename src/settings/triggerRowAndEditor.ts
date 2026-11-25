@@ -87,7 +87,8 @@ export function renderTriggerRuleRow(
   const left = row.createDiv({ cls: "struct-latex-rule-left" });
   const actions = row.createDiv({ cls: "struct-latex-rule-actions" });
   const localDraft = cloneTriggerRule(rule);
-  const actionBadgeText = callbacks.category === "jump" ? t("trigger.badge.jump") : t("trigger.badge.delete");
+  const actionBadgeText =
+    callbacks.category === "delete" ? t("trigger.badge.delete") : t("trigger.badge.jump");
 
   const syncInlineValidity = () => {
     const check = validateTriggerRule(localDraft);

@@ -1,6 +1,6 @@
 import { InputRuleContext, RuleGuardOptions, RuleType } from "./types";
 
-export type TriggerCategory = "jump" | "delete";
+export type TriggerCategory = "jump" | "jumpRightMulti" | "delete";
 
 export interface BaseTriggerRule {
   id: string;
@@ -33,6 +33,7 @@ export type TriggerRule = TextTriggerRule | RegexTriggerRule | JsTriggerRule;
 export interface TriggerFileData {
   version: 1;
   jumpRules: TriggerRule[];
+  jumpRightMultiRules?: TriggerRule[];
   deleteRules: TriggerRule[];
 }
 

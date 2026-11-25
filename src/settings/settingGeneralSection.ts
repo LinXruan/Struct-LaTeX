@@ -90,10 +90,15 @@ export function renderSettingsHomePage(
   }
 }
 
-export function renderSubPageHeader(parent: HTMLElement, title: string, onBack: () => void): void {
+export function renderSubPageHeader(
+  parent: HTMLElement,
+  title: string,
+  onBack: () => void,
+  backText?: string
+): void {
   const header = parent.createDiv({ cls: "struct-latex-subpage-header" });
   header
-    .createEl("button", { cls: "struct-latex-editor-back-btn", text: t("settings.nav.backHome") })
+    .createEl("button", { cls: "struct-latex-editor-back-btn", text: backText ?? t("settings.nav.backHome") })
     .addEventListener("click", onBack);
   header.createEl("h3", { cls: "struct-latex-editor-title", text: title });
 }

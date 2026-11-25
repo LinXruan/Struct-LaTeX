@@ -177,6 +177,8 @@ describe("Feature Keybind Matching & Plugin Settings Defaults", () => {
   it("provides Backspace, Tab, and Special Settings defaults and normalizes invalid keybinds safely", () => {
     assert.equal(DEFAULT_PLUGIN_SETTINGS.smartBackspaceKey, "Backspace");
     assert.equal(DEFAULT_PLUGIN_SETTINGS.smartJumpKey, "Tab");
+    assert.equal(DEFAULT_PLUGIN_SETTINGS.smartJumpRightMultiEnabled, true);
+    assert.equal(DEFAULT_PLUGIN_SETTINGS.smartJumpRightMultiKey, "Shift+Tab");
     assert.equal(DEFAULT_PLUGIN_SETTINGS.parseAmbiguousBars, true);
     assert.equal(DEFAULT_PLUGIN_SETTINGS.autoSizeParens, true);
     assert.equal(DEFAULT_PLUGIN_SETTINGS.inlineMathPreview, "below");

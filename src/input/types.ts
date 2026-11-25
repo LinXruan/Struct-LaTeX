@@ -66,6 +66,8 @@ export interface PluginSettings {
   smartBackspaceKey: string;
   smartJumpEnabled: boolean;
   smartJumpKey: string;
+  smartJumpRightMultiEnabled: boolean;
+  smartJumpRightMultiKey: string;
   outputDialect: OutputDialect;
   parseAmbiguousBars: boolean;
   autoSizeParens: boolean;
@@ -80,6 +82,8 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   smartBackspaceKey: "Backspace",
   smartJumpEnabled: true,
   smartJumpKey: "Tab",
+  smartJumpRightMultiEnabled: true,
+  smartJumpRightMultiKey: "Shift+Tab",
   outputDialect: "latex",
   parseAmbiguousBars: true,
   autoSizeParens: true,

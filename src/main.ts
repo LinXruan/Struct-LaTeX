@@ -19,6 +19,7 @@ import {
   SMART_BACKSPACE_COMMAND_ID,
   SMART_JUMP_COMMAND_ID,
   SMART_JUMP_FULL_CMD_ID,
+  SMART_JUMP_RIGHT_MULTI_COMMAND_ID,
 } from "./settings/mobileToolbarSync";
 import { RuleStore } from "./settings/ruleStore";
 import { StructLatexSettingTab } from "./settings/settingTab";
@@ -79,9 +80,21 @@ export default class StructLatexPlugin extends Plugin {
 
     this.editorExtensions.push(
       createSmartJumpExtension({
+        mode: "rightSingle",
+        defaultKeybind: "Tab",
         isEnabled: () => this.settings.smartJumpEnabled,
         getKeybind: () => this.settings.smartJumpKey,
         getTriggerRules: () => this.triggerStore.getCompiled("jump"),
+        getParseAmbiguousBars: () => this.settings.parseAmbiguousBars,
+        isMac: Platform.isMacOS,
+        onJsError: (rule, message) => this.notifyJsError(rule.name, message),
+      }),
+      createSmartJumpExtension({
+        mode: "rightMulti",
+        defaultKeybind: "Shift+Tab",
+        isEnabled: () => this.settings.smartJumpRightMultiEnabled,
+        getKeybind: () => this.settings.smartJumpRightMultiKey,
+        getTriggerRules: () => this.triggerStore.getCompiled("jumpRightMulti"),
         getParseAmbiguousBars: () => this.settings.parseAmbiguousBars,
         isMac: Platform.isMacOS,
         onJsError: (rule, message) => this.notifyJsError(rule.name, message),
@@ -123,7 +136,18 @@ export default class StructLatexPlugin extends Plugin {
       editorCallback: (editor) => {
         if (!this.settings.smartJumpEnabled) return;
         const cm = (editor as unknown as { cm?: EditorView })?.cm;
-        if (cm) executeSmartJump(cm, this.settings.parseAmbiguousBars);
+        if (cm) executeSmartJump(cm, this.settings.parseAmbiguousBars, "rightSingle");
+      },
+    });
+
+    this.addCommand({
+      id: SMART_JUMP_RIGHT_MULTI_COMMAND_ID,
+      name: t("command.smartJumpRightMulti"),
+      icon: "lucide-chevrons-right",
+      editorCallback: (editor) => {
+        if (!this.settings.smartJumpRightMultiEnabled) return;
+        const cm = (editor as unknown as { cm?: EditorView })?.cm;
+        if (cm) executeSmartJump(cm, this.settings.parseAmbiguousBars, "rightMulti");
       },
     });
 
@@ -169,6 +193,14 @@ export default class StructLatexPlugin extends Plugin {
     this.settings.smartJumpKey = resolveFeatureKeybind(
       this.settings.smartJumpKey,
       DEFAULT_PLUGIN_SETTINGS.smartJumpKey
+    );
+    this.settings.smartJumpRightMultiEnabled =
+      typeof loaded?.smartJumpRightMultiEnabled === "boolean"
+        ? loaded.smartJumpRightMultiEnabled
+        : DEFAULT_PLUGIN_SETTINGS.smartJumpRightMultiEnabled;
+    this.settings.smartJumpRightMultiKey = resolveFeatureKeybind(
+      this.settings.smartJumpRightMultiKey,
+      DEFAULT_PLUGIN_SETTINGS.smartJumpRightMultiKey
     );
     this.settings.parseAmbiguousBars =
       typeof loaded?.parseAmbiguousBars === "boolean"

@@ -16,6 +16,8 @@ import {
 } from "../input/triggerTypes";
 import { RuleStorageAdapter, RuleStoreAppLike } from "./ruleStore";
 
+const TRIGGER_CATEGORIES: readonly TriggerCategory[] = ["jump", "jumpRightMulti", "delete"];
+
 function normalizeVaultPath(path: string): string {
   return path.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/+|\/+$/g, "");
 }
@@ -28,10 +30,8 @@ export class TriggerStore {
   readonly filePath: string;
   private readonly dirPath: string;
   private readonly adapter: RuleStorageAdapter;
-  private jumpRules: TriggerRule[] = [];
-  private deleteRules: TriggerRule[] = [];
-  private jumpCompiled: CompiledTriggerRule[] = [];
-  private deleteCompiled: CompiledTriggerRule[] = [];
+  private readonly rulesByCategory = new Map<TriggerCategory, TriggerRule[]>();
+  private readonly compiledByCategory = new Map<TriggerCategory, CompiledTriggerRule[]>();
   private loadError: string | null = null;
 
   constructor(app: App | RuleStoreAppLike, manifest: Pick<PluginManifest, "id" | "dir">) {
@@ -40,14 +40,15 @@ export class TriggerStore {
       manifest.dir ?? `${app.vault.configDir}/plugins/${manifest.id}`
     );
     this.filePath = normalizeVaultPath(`${this.dirPath}/trigger.json`);
+    this.applyData(createDefaultTriggerFile());
   }
 
   getRules(category: TriggerCategory): TriggerRule[] {
-    return category === "jump" ? this.jumpRules : this.deleteRules;
+    return this.rulesByCategory.get(category) ?? [];
   }
 
   getCompiled(category: TriggerCategory): CompiledTriggerRule[] {
-    return category === "jump" ? this.jumpCompiled : this.deleteCompiled;
+    return this.compiledByCategory.get(category) ?? [];
   }
 
   getLoadError(): string | null {
@@ -55,10 +56,27 @@ export class TriggerStore {
   }
 
   private applyData(data: TriggerFileData): void {
-    this.jumpRules = data.jumpRules.map((r) => cloneTriggerRule(r));
-    this.deleteRules = data.deleteRules.map((r) => cloneTriggerRule(r));
-    this.jumpCompiled = compileTriggerRules(this.jumpRules);
-    this.deleteCompiled = compileTriggerRules(this.deleteRules);
+    const rawMap: Record<TriggerCategory, readonly TriggerRule[]> = {
+      jump: data.jumpRules,
+      jumpRightMulti: data.jumpRightMultiRules ?? [],
+      delete: data.deleteRules,
+    };
+    for (const cat of TRIGGER_CATEGORIES) {
+      const cloned = rawMap[cat].map((r) => cloneTriggerRule(r));
+      this.rulesByCategory.set(cat, cloned);
+      this.compiledByCategory.set(cat, compileTriggerRules(cloned));
+    }
+  }
+
+  private toPayload(overrides?: Partial<Record<TriggerCategory, TriggerRule[]>>): TriggerFileData {
+    const pick = (cat: TriggerCategory) =>
+      (overrides?.[cat] ?? this.getRules(cat)).map((r) => cloneTriggerRule(r));
+    return {
+      version: 1,
+      jumpRules: pick("jump"),
+      jumpRightMultiRules: pick("jumpRightMulti"),
+      deleteRules: pick("delete"),
+    };
   }
 
   private async ensureDir(): Promise<void> {
@@ -106,18 +124,7 @@ export class TriggerStore {
       throw new Error(check.errors[0] ?? t("store.saveRejected"));
     }
 
-    const payload: TriggerFileData = {
-      version: 1,
-      jumpRules:
-        category === "jump"
-          ? nextRules.map((r) => cloneTriggerRule(r))
-          : this.jumpRules.map((r) => cloneTriggerRule(r)),
-      deleteRules:
-        category === "delete"
-          ? nextRules.map((r) => cloneTriggerRule(r))
-          : this.deleteRules.map((r) => cloneTriggerRule(r)),
-    };
-
+    const payload = this.toPayload({ [category]: nextRules });
     const fullCheck = validateTriggerFile(payload);
     if (!fullCheck.valid) {
       throw new Error(fullCheck.errors[0] ?? t("store.saveRejected"));
@@ -129,11 +136,7 @@ export class TriggerStore {
   }
 
   exportJson(): string {
-    return serializeTriggerFile({
-      version: 1,
-      jumpRules: this.jumpRules,
-      deleteRules: this.deleteRules,
-    });
+    return serializeTriggerFile(this.toPayload());
   }
 
   async importJson(raw: string): Promise<void> {

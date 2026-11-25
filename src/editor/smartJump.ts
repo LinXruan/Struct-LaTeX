@@ -8,12 +8,15 @@ import {
 } from "../input/triggerEngine";
 import { CompiledTriggerRule, TriggerJsErrorReporter } from "../input/triggerTypes";
 import { resolveStructuralJump } from "../parser/jumpResolver";
+import { StructuralJumpMode } from "../parser/types";
 import { createKeybindHijackExtension } from "./keybindHijack";
 import { AnalyzedMathBlock, getAnalyzedMathBlock, isInCodeOrFrontmatter, MathRegion } from "./mathRegion";
 
 export { resolvePureStructuralJumpWithTrigger } from "../input/triggerEngine";
 
 export interface SmartJumpOptions {
+  mode?: StructuralJumpMode;
+  defaultKeybind?: string;
   isEnabled?: () => boolean;
   getKeybind?: () => string;
   getTriggerRules?: () => readonly CompiledTriggerRule[];
@@ -80,7 +83,11 @@ function dispatchJumpAction(view: EditorView, action: JumpAction): boolean {
   return true;
 }
 
-export function executeSmartJump(view: EditorView, parseAmbiguousBars: boolean): boolean {
+export function executeSmartJump(
+  view: EditorView,
+  parseAmbiguousBars: boolean,
+  mode: StructuralJumpMode = "rightSingle"
+): boolean {
   const { state } = view;
   if (state.readOnly || view.composing) return false;
   if (state.selection.ranges.length > 1) return false;
@@ -93,7 +100,7 @@ export function executeSmartJump(view: EditorView, parseAmbiguousBars: boolean):
   if (!analyzed) return false;
 
   const relPos = pos - analyzed.region.contentFrom;
-  const targetRelPos = resolveStructuralJump(analyzed.tree, relPos, analyzed.jumpSegments);
+  const targetRelPos = resolveStructuralJump(analyzed.tree, relPos, analyzed.jumpSegments, mode);
 
   if (targetRelPos !== null) {
     return dispatchJumpAction(view, {
@@ -114,11 +121,12 @@ function tryDispatchTriggerJump(
   pos: number,
   docDeleteBefore: number,
   docDeleteAfter: number,
-  parseAmbiguousBars: boolean
+  parseAmbiguousBars: boolean,
+  mode: StructuralJumpMode
 ): boolean {
   const { state } = view;
   if (docDeleteBefore === 0 && docDeleteAfter === 0) {
-    return executeSmartJump(view, parseAmbiguousBars);
+    return executeSmartJump(view, parseAmbiguousBars, mode);
   }
 
   const contentFrom = analyzed.region.contentFrom;
@@ -134,7 +142,8 @@ function tryDispatchTriggerJump(
     mathSource,
     relTrigFrom,
     relTrigTo,
-    parseAmbiguousBars
+    parseAmbiguousBars,
+    mode
   );
 
   if (targetCleanRelPos !== null) {
@@ -167,15 +176,17 @@ function tryDispatchTriggerJump(
 }
 
 export function createSmartJumpExtension(options: SmartJumpOptions = {}): Extension {
+  const mode = options.mode ?? "rightSingle";
+  const defaultKeybind = options.defaultKeybind ?? "Tab";
   const isEnabled = options.isEnabled ?? (() => true);
   const getBars = () => options.getParseAmbiguousBars?.() ?? true;
 
   const keybindExt = createKeybindHijackExtension({
     isEnabled,
-    getKeybind: options.getKeybind ?? (() => "Tab"),
-    defaultKeybind: "Tab",
+    getKeybind: options.getKeybind ?? (() => defaultKeybind),
+    defaultKeybind,
     isMac: options.isMac,
-    run: (view) => executeSmartJump(view, getBars()),
+    run: (view) => executeSmartJump(view, getBars(), mode),
   });
 
   const inputTriggerExt = Prec.highest(
@@ -216,7 +227,8 @@ export function createSmartJumpExtension(options: SmartJumpOptions = {}): Extens
             from,
             docDeleteBefore,
             docDeleteAfter,
-            parseAmbiguousBars
+            parseAmbiguousBars,
+            mode
           )
         ) {
           return true;

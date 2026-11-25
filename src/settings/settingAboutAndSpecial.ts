@@ -4,7 +4,7 @@ import { InlineMathPreviewPosition } from "../input/types";
 import { GeneralSettingsHost } from "./settingGeneralSection";
 
 const REPO_URL = "https://github.com/LinXruan/Struct-LaTeX";
-const BUILD_TAG = "121";
+const BUILD_TAG = "122";
 const LICENSE_URL = "https://github.com/LinXruan/Struct-LaTeX/blob/main/LICENSE";
 
 const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 343 94" fill="none" aria-label="Struct LaTeX">

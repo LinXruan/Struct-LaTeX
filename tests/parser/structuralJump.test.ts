@@ -3,15 +3,20 @@ import { describe, it } from "node:test";
 import { buildMathTree } from "../../src/parser/builder";
 import { collectJumpSegments, resolveStructuralJump } from "../../src/parser/jumpResolver";
 
+import { StructuralJumpMode } from "../../src/parser/types";
+
 const CARET = "▮";
 
-function runJump(pattern: string): { result: string | null; exited: boolean } {
+function runJump(
+  pattern: string,
+  mode: StructuralJumpMode = "rightSingle"
+): { result: string | null; exited: boolean } {
   const pos = pattern.indexOf(CARET);
   assert.notEqual(pos, -1, `Test pattern missing caret ${CARET}: ${pattern}`);
   const source = pattern.slice(0, pos) + pattern.slice(pos + CARET.length);
   const tree = buildMathTree(source);
   const segments = collectJumpSegments(tree);
-  const target = resolveStructuralJump(tree, pos, segments);
+  const target = resolveStructuralJump(tree, pos, segments, mode);
 
   if (target === null) {
     return { result: null, exited: true };
@@ -23,25 +28,34 @@ function runJump(pattern: string): { result: string | null; exited: boolean } {
   };
 }
 
-function expectJump(input: string, expected: string): void {
-  const { result, exited } = runJump(input);
+function expectJump(
+  input: string,
+  expected: string,
+  mode: StructuralJumpMode = "rightSingle"
+): void {
+  const { result, exited } = runJump(input, mode);
   assert.equal(exited, false, `Expected in-block jump for: ${input}`);
   assert.equal(result, expected, `Input: ${input}`);
 }
 
-function expectExit(input: string): void {
-  const { exited, result } = runJump(input);
+function expectExit(input: string, mode: StructuralJumpMode = "rightSingle"): void {
+  const { exited, result } = runJump(input, mode);
   assert.equal(exited, true, `Expected math-block exit for: ${input}, got: ${result}`);
 }
 
-function expectJumpSequence(initial: string, steps: string[], exitAtEnd = true): void {
+function expectJumpSequence(
+  initial: string,
+  steps: string[],
+  exitAtEnd = true,
+  mode: StructuralJumpMode = "rightSingle"
+): void {
   let cur = initial;
   for (const next of steps) {
-    expectJump(cur, next);
+    expectJump(cur, next, mode);
     cur = next;
   }
   if (exitAtEnd) {
-    expectExit(cur);
+    expectExit(cur, mode);
   }
 }
 
@@ -224,5 +238,103 @@ describe("Structural Jump — Unified Newlines, Multiline Envs & Block Exit", ()
     expectExit("x ▮  ");
     expectExit("\n  a + b▮\n");
     expectExit("\n  a + b\n▮");
+  });
+});
+
+describe("Structural Jump — Right Multi-Object (Solid Run Without Crossing Nesting)", () => {
+  it("jumps directly to the end of contiguous same-level solid objects", () => {
+    expectJump("▮1234 + 5678", "1234 + 5678▮", "rightMulti");
+    expectJump("\\si▮n x + b_2^n", "\\sin x + b_2^n▮", "rightMulti");
+    expectJump("▮a + \\sin x + b_2^n", "a + \\sin x + b_2^n▮", "rightMulti");
+    expectExit("1234 + 5678▮", "rightMulti");
+  });
+
+  it("stops before nested brackets and matches single-object stepping inside/across nesting", () => {
+    expectJumpSequence(
+      "▮a + b + \\frac{1 + 2}{3 + 4} + c + d",
+      [
+        "a + b + ▮\\frac{1 + 2}{3 + 4} + c + d",
+        "a + b + \\frac{▮1 + 2}{3 + 4} + c + d",
+        "a + b + \\frac{1 + 2▮}{3 + 4} + c + d",
+        "a + b + \\frac{1 + 2}{▮3 + 4} + c + d",
+        "a + b + \\frac{1 + 2}{3 + 4▮} + c + d",
+        "a + b + \\frac{1 + 2}{3 + 4} ▮+ c + d",
+        "a + b + \\frac{1 + 2}{3 + 4} + c + d▮",
+      ],
+      true,
+      "rightMulti"
+    );
+  });
+
+  it("respects whitespace vs entity boundary and trailing space absorption", () => {
+    expectJump("a  ▮ \\frac{1}{2}", "a   \\frac{▮1}{2}", "rightMulti");
+    expectJump("a ▮  + b", "a   + b▮", "rightMulti");
+    expectJump("a▮   + b", "a   + b▮", "rightMulti");
+    expectJump("▮a +   (x)", "a +   ▮(x)", "rightMulti");
+  });
+
+  it("keeps bracket boundaries for braced scripts while jumping solid runs after brackets", () => {
+    expectJumpSequence(
+      "\\left(x▮\\right)_{2}^{n} + y",
+      [
+        "\\left(x\\right)▮_{2}^{n} + y",
+        "\\left(x\\right)_{▮2}^{n} + y",
+        "\\left(x\\right)_{2▮}^{n} + y",
+        "\\left(x\\right)_{2}▮^{n} + y",
+        "\\left(x\\right)_{2}^{▮n} + y",
+        "\\left(x\\right)_{2}^{n▮} + y",
+        "\\left(x\\right)_{2}^{n} ▮+ y",
+        "\\left(x\\right)_{2}^{n} + y▮",
+      ],
+      true,
+      "rightMulti"
+    );
+
+    expectJumpSequence(
+      "(x▮)_2^n + y",
+      ["(x)▮_2^n + y", "(x)_2^n + y▮"],
+      true,
+      "rightMulti"
+    );
+  });
+
+  it("handles multiline environments, align breaks, \\text{} slots, and paired vs odd bars uniformly", () => {
+    expectJumpSequence(
+      "▮\\begin{cases}\n  x = 1 \\\\\n  y = 2\n\\end{cases}",
+      [
+        "\\begin{cases}\n  ▮x = 1 \\\\\n  y = 2\n\\end{cases}",
+        "\\begin{cases}\n  x = 1 \\\\\n  y = 2\n▮\\end{cases}",
+        "\\begin{cases}\n  x = 1 \\\\\n  y = 2\n\\end{cases}▮",
+      ],
+      true,
+      "rightMulti"
+    );
+
+    expectJumpSequence(
+      "▮\\text{hello world}",
+      ["\\text{▮hello world}", "\\text{hello world▮}", "\\text{hello world}▮"],
+      true,
+      "rightMulti"
+    );
+
+    expectJumpSequence(
+      "▮(|a+b| + |c+d|)",
+      [
+        "(▮|a+b| + |c+d|)",
+        "(|▮a+b| + |c+d|)",
+        "(|a+b▮| + |c+d|)",
+        "(|a+b| ▮+ |c+d|)",
+        "(|a+b| + ▮|c+d|)",
+        "(|a+b| + |▮c+d|)",
+        "(|a+b| + |c+d▮|)",
+        "(|a+b| + |c+d|▮)",
+        "(|a+b| + |c+d|)▮",
+      ],
+      true,
+      "rightMulti"
+    );
+
+    // Odd count (3 bars): degrades to plain atoms so the whole sequence is one solid run
+    expectJump("▮|a| + |b", "|a| + |b▮", "rightMulti");
   });
 });

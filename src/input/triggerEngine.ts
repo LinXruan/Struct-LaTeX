@@ -2,7 +2,7 @@ import { t } from "../i18n";
 import { buildMathTree } from "../parser/builder";
 import { resolveStructuralDelete } from "../parser/deleteResolver";
 import { resolveStructuralJump } from "../parser/jumpResolver";
-import { TextSpan } from "../parser/types";
+import { StructuralJumpMode, TextSpan } from "../parser/types";
 import { buildRuleContext, slicesBackslashToken } from "./contextBuilder";
 import {
   CompiledTriggerRule,
@@ -23,7 +23,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function createDefaultTriggerFile(): TriggerFileData {
-  return { version: 1, jumpRules: [], deleteRules: [] };
+  return { version: 1, jumpRules: [], jumpRightMultiRules: [], deleteRules: [] };
 }
 
 export function cloneTriggerRule<T extends TriggerRule>(rule: T): T {
@@ -95,12 +95,17 @@ export function validateTriggerRuleList(rawList: unknown): ValidationResult {
 export function validateTriggerFile(raw: unknown): ValidationResult {
   if (!isRecord(raw)) return { valid: false, errors: [t("val.triggerFileRoot")] };
   if (raw.version !== 1) return { valid: false, errors: [t("val.triggerFileVersion")] };
-  if (!Array.isArray(raw.jumpRules) || !Array.isArray(raw.deleteRules)) {
+  if (
+    !Array.isArray(raw.jumpRules) ||
+    !Array.isArray(raw.deleteRules) ||
+    (raw.jumpRightMultiRules !== undefined && !Array.isArray(raw.jumpRightMultiRules))
+  ) {
     return { valid: false, errors: [t("val.triggerRulesArray")] };
   }
   const jumpRes = validateTriggerRuleList(raw.jumpRules);
+  const jumpRightMultiRes = validateTriggerRuleList(raw.jumpRightMultiRules ?? []);
   const delRes = validateTriggerRuleList(raw.deleteRules);
-  const errors = [...jumpRes.errors, ...delRes.errors];
+  const errors = [...jumpRes.errors, ...jumpRightMultiRes.errors, ...delRes.errors];
   return { valid: errors.length === 0, errors };
 }
 
@@ -250,11 +255,12 @@ export function resolvePureStructuralJumpWithTrigger(
   mathSource: string,
   relTrigFrom: number,
   relTrigTo: number,
-  parseAmbiguousBars = true
+  parseAmbiguousBars = true,
+  mode: StructuralJumpMode = "rightSingle"
 ): { cleanSource: string; targetCleanRelPos: number | null } {
   const cleanSource = mathSource.slice(0, relTrigFrom) + mathSource.slice(relTrigTo);
   const cleanTree = buildMathTree(cleanSource, { parseAmbiguousBars });
-  return { cleanSource, targetCleanRelPos: resolveStructuralJump(cleanTree, relTrigFrom) };
+  return { cleanSource, targetCleanRelPos: resolveStructuralJump(cleanTree, relTrigFrom, undefined, mode) };
 }
 
 export function resolvePureStructuralDeleteWithTrigger(

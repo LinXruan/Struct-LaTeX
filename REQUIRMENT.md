@@ -49,39 +49,45 @@
 
 ## 3. 智能光标跳转（已实现 `Tab` 基础地基）
 
-> 详见 [PLAN_3.md](PLAN/PLAN_3.md)。当前版本采用**纯粹对象哲学 + 细粒度单步跳转 + 真光标移动**路线，由 `Tab` 触发；未来通过键位绑定扩展 `o` 键、可选跨槽跳出或 `Shift+Tab` 反向跳转。
+> 详见 [PLAN_3.md](PLAN/PLAN_1~10/PLAN_3.md) 与 [PLAN_27.md](PLAN/PLAN_21~30/PLAN_27.md)。当前版本采用**纯粹对象哲学 + 真光标移动**路线，支持**向右单对象跳转**（默认 `Tab`）与**向右多对象跳转**（默认 `Shift+Tab`），并在设置页「光标跳转」中采用四向导航入口结构，为后续向左单/多对象跳转（默认不绑键位）预留位置。
 
 ### 3.1 核心跳转语义
-将对象树按文档先序展开为有序平面段 `JumpSegment[]`（每段由实体区间 `[coreFrom, coreTo)` 与尾随空白 `[coreTo, to]` 构成）：
+将对象树按文档先序展开为有序平面段 `JumpSegment[]`（每段由实体区间 `[coreFrom, coreTo)`、尾随空白 `[coreTo, to]`、`isSolid` 及同层连续实心序列末端 `solidRunTo` 构成）：
 
-1. **光标在对象实体内（`relPos < seg.coreTo`）**：跳至该段末端 `seg.to`（包含吸附的空白）：
-   - 实心对象：`\s|in   (1+2)` → `\sin   |(1+2)`；`a|_2^n` → `a_2|^n`；`a_|\alpha` → `a_\alpha|`。
-   - 括号开界：`\sin |(   1+2)` → `\sin (   |1+2)`；`\frac|{a}{b}` → `\frac{|a}{b}`。
-   - 括号槽间与闭界：`\frac{a|}{b}` → `\frac{a}{|b}`；`\left(1+2|\right)   +3` → `\left(1+2\right)   |+3`。
-2. **光标在空白内（`seg.coreTo <= relPos <= seg.to`）**：视为已站稳当前对象最右端，直接跳过该空白作用于**下一段**（满足 `next.coreTo > relPos`）：
-   - 尾随空白内：`\sin  |  (1+2)` → `\sin    (|1+2)`。
-   - 开界前导空白内：`\sin (  | 1+2)` → `\sin (   1|+2)`。
-   - 多行环境换行与缩进：`\begin{cases}\n  x \\|\n  y\n\end{cases}` → 跨过 `\n  ` 并跳至 `y|`。
-3. **纯对象两步跳（无跨层特判）**：
-   - `\left\Vert x|\right\Vert_{2}` 按两次 `Tab`：先出 `\right\Vert|`，再进 `_{|`；`∑_{k}^{n}` 逐段步进。
-4. **数学块末尾外跳**：当光标后已无未跨越的实体段且数学块已闭合时：
+1. **向右单对象跳转（`rightSingle`，默认 `Tab`）**：
+   - **光标在对象实体内（`relPos < seg.coreTo`）**：跳至该段末端 `seg.to`（包含吸附的空白）：
+     - 实心对象：`\s|in   (1+2)` → `\sin   |(1+2)`；`a|_2^n` → `a_2|^n`；`a_|\alpha` → `a_\alpha|`。
+     - 括号开界：`\sin |(   1+2)` → `\sin (   |1+2)`；`\frac|{a}{b}` → `\frac{|a}{b}`。
+     - 括号槽间与闭界：`\frac{a|}{b}` → `\frac{a}{|b}`；`\left(1+2|\right)   +3` → `\left(1+2\right)   |+3`。
+   - **光标在空白内（`seg.coreTo <= relPos <= seg.to`）**：视为已站稳当前对象最右端，直接跳过该空白作用于**下一段**（满足 `next.coreTo > relPos`）：
+     - 尾随空白内：`\sin  |  (1+2)` → `\sin    (|1+2)`。
+     - 开界前导空白内：`\sin (  | 1+2)` → `\sin (   1|+2)`。
+     - 多行环境换行与缩进：`\begin{cases}\n  x \\|\n  y\n\end{cases}` → 跨过 `\n  ` 并跳至 `y|`。
+   - **纯对象两步跳（无跨层特判）**：
+     - `\left\Vert x|\right\Vert_{2}` 按两次 `Tab`：先出 `\right\Vert|`，再进 `_{|`；`∑_{k}^{n}` 逐段步进。
+2. **向右多对象跳转（`rightMulti`，默认 `Shift+Tab`）**：
+   - **嵌套边界完全一致**：遇到 `BracketObject` 开界、槽间、闭界时仍停在 `seg.to`（进入槽位或跳出当前括号，绝不跨越嵌套层级）。
+   - **同层实心对象直跳末尾**：遇到 `WordObject` / `AtomObject` 时直接跳至当前连续同层实心段最末端的 `solidRunTo`（严格不超过下一个 `BracketObject` 或当前槽位/数学块末尾）：
+     - `|a + b + \frac{1}{2} + c + d` → `a + b + |\frac{1}{2} + c + d` → `\frac{|1}{2}` → `\frac{1|}{2}` → `\frac{1}{|2}` → `\frac{1}{2|}` → `\frac{1}{2} |+ c + d` → `a + b + \frac{1}{2} + c + d|`。
+     - 严格零特例：`\\`、`&`、无花括号上下标 `_2`/`^n` 及 `\text{...}` 内文本均按实心对象一并跨过。
+3. **数学块末尾外跳**：当光标后已无未跨越的实体段且数学块已闭合时：
    - **行内公式（`$...$` / `\(...\)`）**：右侧已有水平空格则纯移至空格后；否则插入单个 `" "` 并移动光标至其后。
    - **块级公式（`$$...$$` / `\[...\]`）**：闭合标记后已有换行则移至下一行行首；否则插入 `"\n"` 并移至新行行首。
-5. **安全降级**：非数学区、只读、IME 合成态、多光标或非空选区时返回 `false`，完整交还原生 `Tab`（列表/代码块缩进等）。
+4. **安全降级**：非数学区、只读、IME 合成态、多光标或非空选区时返回 `false`，完整交还原生 `Tab` / `Shift+Tab`（列表/代码块缩进与反缩进等）。
 
 ### 3.2 三类触发机制与输入劫持优先级（光标跳转 & 结构删除通用）
-针对桌面端物理键盘与移动端虚拟输入法/工具栏的差异，**光标跳转**与**结构删除**均支持三类触发通道：
+针对桌面端物理键盘与移动端虚拟输入法/工具栏的差异，**向右单对象跳转**、**向右多对象跳转**与**结构删除**均支持三类触发通道：
 1. **第 1 类：键盘按键劫持（适用于 PC 端物理键盘）**
-   - 在设置页「光标跳转」与「结构删除」子页面中支持自定义触发按键（文本框手填 + 按键录制 + 恢复默认，默认分别为 `Tab` 与 `Backspace`）。
+   - 在设置页「光标跳转 → 向右单对象跳转 / 向右多对象跳转」与「结构删除」子页面中支持自定义触发按键（文本框手填 + 按键录制 + 恢复默认，默认分别为 `Tab`、`Shift+Tab` 与 `Backspace`）。
    - 通过 `Prec.highest` `keydown` 劫持介入，命中结构条件时优先拦截该按键；未命中结构条件时完整放行。
 2. **第 2 类：输入检测触发规则（全端通用，支持多规则 + 纯匹配 / 正则 / JavaScript，持久化于 `trigger.json`）**
    - 核心语义：**检测到输入 `xxx` ➔ 自动将 `xxx` 删除，并立即触发光标跳转（或结构化整体删除）**（单字符触发直接在 `inputHandler` 阶段阻断上屏并执行动作；多字符触发在单步原子事务中剥离已上屏前缀并基于干净语法树计算落点/删除跨度）。
-   - 全部优先于智能输入：全局 `inputHandler` 执行优先级为 **`光标跳转输入规则 ➔ 结构删除输入规则 ➔ 智能输入规则`**。
+   - 全部优先于智能输入：全局 `inputHandler` 执行优先级为 **`向右单对象跳转输入规则 ➔ 向右多对象跳转输入规则 ➔ 结构删除输入规则 ➔ 智能输入规则`**。
    - 复用智能输入的 `InputRuleContext` 与上下文守卫（默认开启 `跳过 \text{...}`、`跳过手写 \command`、`跳过 \begin{...}`，可选 `词边界保护`），确保绑定 `o` 等字母时在手打 `\cos`、`\log`、`\text{hello}` 中绝不误触发；当光标位置不满足跳转或结构删除条件时，完整放行原输入。
-   - 默认列表为空，独立存储于插件目录 `trigger.json`（含 `jumpRules` 与 `deleteRules`）。
+   - 默认列表为空，独立存储于插件目录 `trigger.json`（含 `jumpRules`、`jumpRightMultiRules` 与 `deleteRules`）。
 3. **第 3 类：移动端工具栏快捷按钮（Obsidian Mobile Toolbar）**
-   - 注册「智能光标跳转」（`struct-latex:smart-jump`）与「结构化整体删除」（`struct-latex:smart-backspace`）两个全局编辑器命令（配内置 Lucide 图标）。
-   - 通过 `PluginSettings.mobileToolbarInitialized` 初始化标记，在首次安装/启动插件时**默认自动将「智能光标跳转」添加至 Obsidian 移动端工具栏**（`.obsidian/app.json` 的 `mobileToolbarCommands` 并实时刷新 `app.mobileToolbar`），同时在设置页提供一键添加/移除按钮。
+   - 注册「智能光标跳转（向右单对象）」（`struct-latex:smart-jump`）、「智能光标跳转（向右多对象）」（`struct-latex:smart-jump-right-multi`）与「结构化整体删除」（`struct-latex:smart-backspace`）全局编辑器命令（配内置 Lucide 图标）。
+   - 通过 `PluginSettings.mobileToolbarInitialized` 初始化标记，在首次安装/启动插件时**默认自动将「向右单对象跳转」添加至 Obsidian 移动端工具栏**（`.obsidian/app.json` 的 `mobileToolbarCommands` 并实时刷新 `app.mobileToolbar`），同时在各跳转/删除设置页提供一键添加/移除按钮。
 
 ---
 

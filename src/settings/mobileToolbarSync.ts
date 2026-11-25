@@ -2,10 +2,18 @@ import type { App } from "obsidian";
 import { TriggerCategory } from "../input/triggerTypes";
 
 export const SMART_JUMP_COMMAND_ID = "smart-jump";
+export const SMART_JUMP_RIGHT_MULTI_COMMAND_ID = "smart-jump-right-multi";
 export const SMART_BACKSPACE_COMMAND_ID = "smart-backspace";
 
 export const SMART_JUMP_FULL_CMD_ID = "struct-latex:smart-jump";
+export const SMART_JUMP_RIGHT_MULTI_FULL_CMD_ID = "struct-latex:smart-jump-right-multi";
 export const SMART_BACKSPACE_FULL_CMD_ID = "struct-latex:smart-backspace";
+
+const CATEGORY_TO_FULL_CMD_ID: Record<TriggerCategory, string> = {
+  jump: SMART_JUMP_FULL_CMD_ID,
+  jumpRightMulti: SMART_JUMP_RIGHT_MULTI_FULL_CMD_ID,
+  delete: SMART_BACKSPACE_FULL_CMD_ID,
+};
 
 interface MobileToolbarVaultLike {
   getConfig?: (key: string) => unknown;
@@ -20,7 +28,7 @@ export interface MobileToolbarAppLike {
 }
 
 export function getFullCommandIdForCategory(category: TriggerCategory): string {
-  return category === "jump" ? SMART_JUMP_FULL_CMD_ID : SMART_BACKSPACE_FULL_CMD_ID;
+  return CATEGORY_TO_FULL_CMD_ID[category];
 }
 
 export function getMobileToolbarCommands(app: App | MobileToolbarAppLike): string[] | null {

@@ -20,6 +20,7 @@ import {
   removeCommandFromMobileToolbar,
   SMART_BACKSPACE_FULL_CMD_ID,
   SMART_JUMP_FULL_CMD_ID,
+  SMART_JUMP_RIGHT_MULTI_FULL_CMD_ID,
 } from "../../src/settings/mobileToolbarSync";
 import { RuleStorageAdapter } from "../../src/settings/ruleStore";
 import { TriggerStore } from "../../src/settings/triggerStore";
@@ -116,6 +117,26 @@ describe("Trigger Engine — Validation, Guards, Text/Regex/JS Evaluation & Pref
       }).valid,
       true
     );
+
+    assert.equal(
+      validateTriggerFile({
+        version: 1,
+        jumpRules: [],
+        jumpRightMultiRules: [],
+        deleteRules: [],
+      }).valid,
+      true
+    );
+
+    assert.equal(
+      validateTriggerFile({
+        version: 1,
+        jumpRules: [],
+        jumpRightMultiRules: "bad",
+        deleteRules: [],
+      }).valid,
+      false
+    );
   });
 
   it("matches text, regex, and JS trigger rules while protecting \\command, \\text{}, and \\begin{}", () => {
@@ -205,6 +226,17 @@ describe("Trigger Engine — Validation, Guards, Text/Regex/JS Evaluation & Pref
     // Cursor in `\frac{a|}{b}` (index 7) jumps into `{|b}` (index 9 in cleanSource)
     assert.equal(jumpRes.targetCleanRelPos, 9);
 
+    // Multi-char jump trigger `oo` in rightMulti mode jumps to end of same-level solid run without crossing `\frac`
+    const rightMultiJumpRes = resolvePureStructuralJumpWithTrigger(
+      "ooa + b + \\frac{1}{2}",
+      0,
+      2,
+      true,
+      "rightMulti"
+    );
+    assert.equal(rightMultiJumpRes.cleanSource, "a + b + \\frac{1}{2}");
+    assert.equal(rightMultiJumpRes.targetCleanRelPos, 8);
+
     // Multi-char delete trigger `dd`: first `d` is in doc (`\sin d` at index 5..6), second `d` arrives
     const delSpan = resolvePureStructuralDeleteWithTrigger("\\sin d", 5, 6);
     assert.deepEqual(delSpan, { from: 0, to: 6 });
@@ -226,6 +258,7 @@ describe("TriggerStore & Mobile Toolbar Auto-Injection", () => {
     const { loadError } = await store.load();
     assert.equal(loadError, null);
     assert.equal(store.getRules("jump").length, 0);
+    assert.equal(store.getRules("jumpRightMulti").length, 0);
     assert.equal(store.getRules("delete").length, 0);
     assert.equal(await adapter.exists(".obsidian/plugins/struct-latex/trigger.json"), true);
 
@@ -239,12 +272,25 @@ describe("TriggerStore & Mobile Toolbar Auto-Injection", () => {
         trigger: "o",
       },
     ]);
+    await store.saveCategory("jumpRightMulti", [
+      {
+        id: "jm1",
+        name: "oo",
+        group: "Custom",
+        type: "text",
+        enabled: true,
+        trigger: "oo",
+      },
+    ]);
     assert.equal(store.getRules("jump").length, 1);
     assert.equal(store.getCompiled("jump").length, 1);
+    assert.equal(store.getRules("jumpRightMulti").length, 1);
+    assert.equal(store.getCompiled("jumpRightMulti").length, 1);
     assert.equal(store.getRules("delete").length, 0);
 
     await store.resetCategory("jump");
     assert.equal(store.getRules("jump").length, 0);
+    assert.equal(store.getRules("jumpRightMulti").length, 1);
   });
 
   it("injects struct-latex:smart-jump into mobileToolbarCommands once and supports add/remove", () => {
@@ -285,7 +331,12 @@ describe("TriggerStore & Mobile Toolbar Auto-Injection", () => {
     assert.equal(addCommandToMobileToolbar(mockApp, SMART_JUMP_FULL_CMD_ID), false);
     assert.equal(updateCount, 1);
 
-    // Can also add and remove structural delete command
+    // Can also add and remove right-multi jump and structural delete commands
+    assert.equal(addCommandToMobileToolbar(mockApp, SMART_JUMP_RIGHT_MULTI_FULL_CMD_ID), true);
+    assert.equal(isCommandInMobileToolbar(mockApp, SMART_JUMP_RIGHT_MULTI_FULL_CMD_ID), true);
+    assert.equal(removeCommandFromMobileToolbar(mockApp, SMART_JUMP_RIGHT_MULTI_FULL_CMD_ID), true);
+    assert.equal(isCommandInMobileToolbar(mockApp, SMART_JUMP_RIGHT_MULTI_FULL_CMD_ID), false);
+
     assert.equal(addCommandToMobileToolbar(mockApp, SMART_BACKSPACE_FULL_CMD_ID), true);
     assert.equal(isCommandInMobileToolbar(mockApp, SMART_BACKSPACE_FULL_CMD_ID), true);
     assert.equal(removeCommandFromMobileToolbar(mockApp, SMART_BACKSPACE_FULL_CMD_ID), true);
