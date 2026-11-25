@@ -1,6 +1,7 @@
-import { Extension, StateEffect, StateField, Transaction } from "@codemirror/state";
+import { EditorSelection, Extension, StateEffect, StateField, Transaction } from "@codemirror/state";
 import {
   EditorView,
+  Rect,
   repositionTooltips,
   showTooltip,
   Tooltip,
@@ -11,7 +12,9 @@ import {
 import { editorLivePreviewField } from "obsidian";
 import { InlineMathPreviewPosition } from "../input/types";
 import {
+  computeInlineMathPreviewAnchorRect,
   InlineMathPreviewTarget,
+  isMultiLinePreviewSpan,
   resolveInlineMathPreviewTarget,
 } from "./inlineMathPreviewState";
 import {
@@ -80,6 +83,41 @@ function syncTooltipFontSize(view: EditorView, dom: HTMLElement): void {
   }
 }
 
+const OFFSCREEN_RECT: Rect = {
+  left: -100_000,
+  right: -100_000,
+  top: -100_000,
+  bottom: -100_000,
+};
+
+function resolveTooltipCoords(view: EditorView, target: InlineMathPreviewTarget): Rect {
+  const startCoords = view.coordsAtPos(target.blockFrom, 1);
+  const endCoords = view.coordsAtPos(target.blockTo, -1);
+
+  let lastLineStartCoords: Rect | null = null;
+  if (
+    endCoords &&
+    target.position === "below" &&
+    (!startCoords || isMultiLinePreviewSpan(startCoords, endCoords))
+  ) {
+    const lineStart = view.moveToLineBoundary(
+      EditorSelection.cursor(target.blockTo, -1),
+      false,
+      true
+    );
+    lastLineStartCoords = view.coordsAtPos(lineStart.head, 1);
+  }
+
+  return (
+    computeInlineMathPreviewAnchorRect(
+      startCoords,
+      endCoords,
+      lastLineStartCoords,
+      target.position
+    ) ?? OFFSCREEN_RECT
+  );
+}
+
 function createPreviewTooltip(target: InlineMathPreviewTarget): PreviewTooltip {
   return {
     pos: target.blockFrom,
@@ -94,6 +132,7 @@ function createPreviewTooltip(target: InlineMathPreviewTarget): PreviewTooltip {
       return {
         dom,
         offset: { x: 0, y: 4 },
+        getCoords: () => resolveTooltipCoords(view, target),
         update(update: ViewUpdate): void {
           if (update.geometryChanged) {
             syncTooltipFontSize(update.view, dom);

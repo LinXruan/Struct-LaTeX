@@ -3,7 +3,11 @@ import { describe, it } from "node:test";
 import { defineLanguageFacet, Language, language } from "@codemirror/language";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { Input, NodeSet, NodeType, Parser, PartialParse, Tree } from "@lezer/common";
-import { resolveInlineMathPreviewTarget } from "../../src/editor/inlineMathPreviewState";
+import {
+  computeInlineMathPreviewAnchorRect,
+  isMultiLinePreviewSpan,
+  resolveInlineMathPreviewTarget,
+} from "../../src/editor/inlineMathPreviewState";
 
 interface SpanSpec {
   typeId: number;
@@ -185,5 +189,49 @@ describe("Inline Math Preview State Resolver", () => {
 
     const codeDoc = "`$x^2$`";
     assert.equal(resolveInlineMathPreviewTarget(makeState(codeDoc, 3), "below"), null);
+  });
+
+  it("anchors below tooltips to the bottom and start of the last visual line when multiline", () => {
+    const line1Start = { left: 260, right: 268, top: 100, bottom: 124 };
+    const line1End = { left: 380, right: 388, top: 100, bottom: 124 };
+    const line2Start = { left: 40, right: 48, top: 124, bottom: 148 };
+    const line2End = { left: 180, right: 188, top: 124, bottom: 148 };
+
+    assert.equal(isMultiLinePreviewSpan(line1Start, line1End), false);
+    assert.equal(isMultiLinePreviewSpan(line1Start, line2End), true);
+
+    assert.deepEqual(
+      computeInlineMathPreviewAnchorRect(line1Start, line1End, null, "below"),
+      { left: 260, right: 388, top: 100, bottom: 124 }
+    );
+
+    assert.deepEqual(
+      computeInlineMathPreviewAnchorRect(line1Start, line2End, line2Start, "below"),
+      { left: 40, right: 268, top: 100, bottom: 148 }
+    );
+
+    assert.deepEqual(
+      computeInlineMathPreviewAnchorRect(line1Start, line2End, line2Start, "above"),
+      { left: 260, right: 268, top: 100, bottom: 148 }
+    );
+  });
+
+  it("handles partially off-viewport anchors cleanly", () => {
+    const line2Start = { left: 40, right: 48, top: 124, bottom: 148 };
+    const line2End = { left: 180, right: 188, top: 124, bottom: 148 };
+    const line1Start = { left: 260, right: 268, top: 100, bottom: 124 };
+
+    assert.deepEqual(
+      computeInlineMathPreviewAnchorRect(null, line2End, line2Start, "below"),
+      { left: 40, right: 188, top: 124, bottom: 148 }
+    );
+    assert.equal(computeInlineMathPreviewAnchorRect(null, line2End, line2Start, "above"), null);
+
+    assert.deepEqual(
+      computeInlineMathPreviewAnchorRect(line1Start, null, null, "above"),
+      line1Start
+    );
+    assert.equal(computeInlineMathPreviewAnchorRect(line1Start, null, null, "below"), null);
+    assert.equal(computeInlineMathPreviewAnchorRect(null, null, null, "below"), null);
   });
 });

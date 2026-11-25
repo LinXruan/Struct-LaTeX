@@ -10,6 +10,67 @@ export interface InlineMathPreviewTarget {
   position: "above" | "below";
 }
 
+export interface PreviewAnchorRect {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+/**
+ * Returns true when the formula end coordinate sits on a lower visual line than its start.
+ */
+export function isMultiLinePreviewSpan(
+  startCoords: PreviewAnchorRect,
+  endCoords: PreviewAnchorRect
+): boolean {
+  const lineHeight = Math.max(1, startCoords.bottom - startCoords.top);
+  return endCoords.bottom - startCoords.bottom > lineHeight * 0.5;
+}
+
+/**
+ * Composes a combined bounding rect across `[blockFrom, blockTo]` so CM6 places
+ * `"below"` tooltips beneath the last visual line and `"above"` tooltips above the first.
+ */
+export function computeInlineMathPreviewAnchorRect(
+  startCoords: PreviewAnchorRect | null,
+  endCoords: PreviewAnchorRect | null,
+  lastLineStartCoords: PreviewAnchorRect | null,
+  position: "above" | "below"
+): PreviewAnchorRect | null {
+  if (!startCoords && !endCoords) return null;
+
+  if (!startCoords && endCoords) {
+    if (position === "above") return null;
+    const left = lastLineStartCoords?.left ?? endCoords.left;
+    return {
+      left,
+      right: Math.max(left, endCoords.right),
+      top: endCoords.top,
+      bottom: endCoords.bottom,
+    };
+  }
+
+  if (startCoords && !endCoords) {
+    return position === "above" ? startCoords : null;
+  }
+
+  const start = startCoords!;
+  const end = endCoords!;
+  const multiLine = isMultiLinePreviewSpan(start, end);
+  const left =
+    multiLine && position === "below"
+      ? (lastLineStartCoords?.left ?? Math.min(start.left, end.left))
+      : start.left;
+
+  return {
+    left,
+    right: Math.max(left, start.right, end.right),
+    top: Math.min(start.top, end.top),
+    bottom: Math.max(start.bottom, end.bottom),
+  };
+}
+
 /**
  * Resolves whether an inline math live preview tooltip should be shown for `state`
  * and computes the normalized TeX source plus anchor span.
