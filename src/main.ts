@@ -19,6 +19,8 @@ import {
   SMART_BACKSPACE_COMMAND_ID,
   SMART_JUMP_COMMAND_ID,
   SMART_JUMP_FULL_CMD_ID,
+  SMART_JUMP_LEFT_MULTI_COMMAND_ID,
+  SMART_JUMP_LEFT_SINGLE_COMMAND_ID,
   SMART_JUMP_RIGHT_MULTI_COMMAND_ID,
 } from "./settings/mobileToolbarSync";
 import { RuleStore } from "./settings/ruleStore";
@@ -78,27 +80,62 @@ export default class StructLatexPlugin extends Plugin {
       new Notice(t("notice.loadError", { err: trigErr }));
     }
 
-    this.editorExtensions.push(
-      createSmartJumpExtension({
-        mode: "rightSingle",
-        defaultKeybind: "Tab",
+    const jumpConfigs = [
+      {
+        mode: "rightSingle" as const,
+        defaultKeybind: DEFAULT_PLUGIN_SETTINGS.smartJumpKey,
+        category: "jump" as const,
+        cmdId: SMART_JUMP_COMMAND_ID,
+        cmdNameKey: "command.smartJump" as const,
+        icon: "lucide-arrow-right-to-line",
         isEnabled: () => this.settings.smartJumpEnabled,
         getKeybind: () => this.settings.smartJumpKey,
-        getTriggerRules: () => this.triggerStore.getCompiled("jump"),
-        getParseAmbiguousBars: () => this.settings.parseAmbiguousBars,
-        isMac: Platform.isMacOS,
-        onJsError: (rule, message) => this.notifyJsError(rule.name, message),
-      }),
-      createSmartJumpExtension({
-        mode: "rightMulti",
-        defaultKeybind: "Shift+Tab",
+      },
+      {
+        mode: "rightMulti" as const,
+        defaultKeybind: DEFAULT_PLUGIN_SETTINGS.smartJumpRightMultiKey,
+        category: "jumpRightMulti" as const,
+        cmdId: SMART_JUMP_RIGHT_MULTI_COMMAND_ID,
+        cmdNameKey: "command.smartJumpRightMulti" as const,
+        icon: "lucide-chevrons-right",
         isEnabled: () => this.settings.smartJumpRightMultiEnabled,
         getKeybind: () => this.settings.smartJumpRightMultiKey,
-        getTriggerRules: () => this.triggerStore.getCompiled("jumpRightMulti"),
-        getParseAmbiguousBars: () => this.settings.parseAmbiguousBars,
-        isMac: Platform.isMacOS,
-        onJsError: (rule, message) => this.notifyJsError(rule.name, message),
-      }),
+      },
+      {
+        mode: "leftSingle" as const,
+        defaultKeybind: DEFAULT_PLUGIN_SETTINGS.smartJumpLeftSingleKey,
+        category: "jumpLeftSingle" as const,
+        cmdId: SMART_JUMP_LEFT_SINGLE_COMMAND_ID,
+        cmdNameKey: "command.smartJumpLeftSingle" as const,
+        icon: "lucide-arrow-left-to-line",
+        isEnabled: () => this.settings.smartJumpLeftSingleEnabled,
+        getKeybind: () => this.settings.smartJumpLeftSingleKey,
+      },
+      {
+        mode: "leftMulti" as const,
+        defaultKeybind: DEFAULT_PLUGIN_SETTINGS.smartJumpLeftMultiKey,
+        category: "jumpLeftMulti" as const,
+        cmdId: SMART_JUMP_LEFT_MULTI_COMMAND_ID,
+        cmdNameKey: "command.smartJumpLeftMulti" as const,
+        icon: "lucide-chevrons-left",
+        isEnabled: () => this.settings.smartJumpLeftMultiEnabled,
+        getKeybind: () => this.settings.smartJumpLeftMultiKey,
+      },
+    ];
+
+    this.editorExtensions.push(
+      ...jumpConfigs.map((cfg) =>
+        createSmartJumpExtension({
+          mode: cfg.mode,
+          defaultKeybind: cfg.defaultKeybind,
+          isEnabled: cfg.isEnabled,
+          getKeybind: cfg.getKeybind,
+          getTriggerRules: () => this.triggerStore.getCompiled(cfg.category),
+          getParseAmbiguousBars: () => this.settings.parseAmbiguousBars,
+          isMac: Platform.isMacOS,
+          onJsError: (rule, message) => this.notifyJsError(rule.name, message),
+        })
+      ),
       createSmartBackspaceExtension({
         isEnabled: () => this.settings.smartBackspaceEnabled,
         getKeybind: () => this.settings.smartBackspaceKey,
@@ -129,27 +166,18 @@ export default class StructLatexPlugin extends Plugin {
 
     this.registerEditorExtension(this.editorExtensions);
 
-    this.addCommand({
-      id: SMART_JUMP_COMMAND_ID,
-      name: t("command.smartJump"),
-      icon: "lucide-arrow-right-to-line",
-      editorCallback: (editor) => {
-        if (!this.settings.smartJumpEnabled) return;
-        const cm = (editor as unknown as { cm?: EditorView })?.cm;
-        if (cm) executeSmartJump(cm, this.settings.parseAmbiguousBars, "rightSingle");
-      },
-    });
-
-    this.addCommand({
-      id: SMART_JUMP_RIGHT_MULTI_COMMAND_ID,
-      name: t("command.smartJumpRightMulti"),
-      icon: "lucide-chevrons-right",
-      editorCallback: (editor) => {
-        if (!this.settings.smartJumpRightMultiEnabled) return;
-        const cm = (editor as unknown as { cm?: EditorView })?.cm;
-        if (cm) executeSmartJump(cm, this.settings.parseAmbiguousBars, "rightMulti");
-      },
-    });
+    for (const cfg of jumpConfigs) {
+      this.addCommand({
+        id: cfg.cmdId,
+        name: t(cfg.cmdNameKey),
+        icon: cfg.icon,
+        editorCallback: (editor) => {
+          if (!cfg.isEnabled()) return;
+          const cm = (editor as unknown as { cm?: EditorView })?.cm;
+          if (cm) executeSmartJump(cm, this.settings.parseAmbiguousBars, cfg.mode);
+        },
+      });
+    }
 
     this.addCommand({
       id: SMART_BACKSPACE_COMMAND_ID,
@@ -201,6 +229,22 @@ export default class StructLatexPlugin extends Plugin {
     this.settings.smartJumpRightMultiKey = resolveFeatureKeybind(
       this.settings.smartJumpRightMultiKey,
       DEFAULT_PLUGIN_SETTINGS.smartJumpRightMultiKey
+    );
+    this.settings.smartJumpLeftSingleEnabled =
+      typeof loaded?.smartJumpLeftSingleEnabled === "boolean"
+        ? loaded.smartJumpLeftSingleEnabled
+        : DEFAULT_PLUGIN_SETTINGS.smartJumpLeftSingleEnabled;
+    this.settings.smartJumpLeftSingleKey = resolveFeatureKeybind(
+      this.settings.smartJumpLeftSingleKey,
+      DEFAULT_PLUGIN_SETTINGS.smartJumpLeftSingleKey
+    );
+    this.settings.smartJumpLeftMultiEnabled =
+      typeof loaded?.smartJumpLeftMultiEnabled === "boolean"
+        ? loaded.smartJumpLeftMultiEnabled
+        : DEFAULT_PLUGIN_SETTINGS.smartJumpLeftMultiEnabled;
+    this.settings.smartJumpLeftMultiKey = resolveFeatureKeybind(
+      this.settings.smartJumpLeftMultiKey,
+      DEFAULT_PLUGIN_SETTINGS.smartJumpLeftMultiKey
     );
     this.settings.parseAmbiguousBars =
       typeof loaded?.parseAmbiguousBars === "boolean"

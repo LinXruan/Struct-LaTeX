@@ -49,10 +49,10 @@
 
 ## 3. 智能光标跳转（已实现 `Tab` 基础地基）
 
-> 详见 [PLAN_3.md](PLAN/PLAN_1~10/PLAN_3.md) 与 [PLAN_27.md](PLAN/PLAN_21~30/PLAN_27.md)。当前版本采用**纯粹对象哲学 + 真光标移动**路线，支持**向右单对象跳转**（默认 `Tab`）与**向右多对象跳转**（默认 `Shift+Tab`），并在设置页「光标跳转」中采用四向导航入口结构，为后续向左单/多对象跳转（默认不绑键位）预留位置。
+> 详见 [PLAN_3.md](PLAN/PLAN_1~10/PLAN_3.md)、[PLAN_27.md](PLAN/PLAN_21~30/PLAN_27.md) 与 [PLAN_28.md](PLAN/PLAN_21~30/PLAN_28.md)。当前版本采用**纯粹对象哲学 + 真光标移动**路线，完整支持四向结构化光标跳转：**向右单对象跳转**（默认 `Tab`）、**向右多对象跳转**（默认 `Shift+Tab`）、**向左单对象跳转**（默认不绑键位）与**向左多对象跳转**（默认不绑键位）。
 
 ### 3.1 核心跳转语义
-将对象树按文档先序展开为有序平面段 `JumpSegment[]`（每段由实体区间 `[coreFrom, coreTo)`、尾随空白 `[coreTo, to]`、`isSolid` 及同层连续实心序列末端 `solidRunTo` 构成）：
+将对象树按文档先序展开为有序平面段 `JumpSegment[]`（每段由实体区间 `[coreFrom, coreTo)`、尾随空白 `[coreTo, to]`、`isSolid` 及同层连续实心序列两端 `solidRunFrom` / `solidRunTo` 构成）：
 
 1. **向右单对象跳转（`rightSingle`，默认 `Tab`）**：
    - **光标在对象实体内（`relPos < seg.coreTo`）**：跳至该段末端 `seg.to`（包含吸附的空白）：
@@ -70,23 +70,25 @@
    - **同层实心对象直跳末尾**：遇到 `WordObject` / `AtomObject` 时直接跳至当前连续同层实心段最末端的 `solidRunTo`（严格不超过下一个 `BracketObject` 或当前槽位/数学块末尾）：
      - `|a + b + \frac{1}{2} + c + d` → `a + b + |\frac{1}{2} + c + d` → `\frac{|1}{2}` → `\frac{1|}{2}` → `\frac{1}{|2}` → `\frac{1}{2|}` → `\frac{1}{2} |+ c + d` → `a + b + \frac{1}{2} + c + d|`。
      - 严格零特例：`\\`、`&`、无花括号上下标 `_2`/`^n` 及 `\text{...}` 内文本均按实心对象一并跨过。
-3. **数学块末尾外跳**：当光标后已无未跨越的实体段且数学块已闭合时：
-   - **行内公式（`$...$` / `\(...\)`）**：右侧已有水平空格则纯移至空格后；否则插入单个 `" "` 并移动光标至其后。
-   - **块级公式（`$$...$$` / `\[...\]`）**：闭合标记后已有换行则移至下一行行首；否则插入 `"\n"` 并移至新行行首。
-4. **安全降级**：非数学区、只读、IME 合成态、多光标或非空选区时返回 `false`，完整交还原生 `Tab` / `Shift+Tab`（列表/代码块缩进与反缩进等）。
+3. **向左单对象跳转（`leftSingle`，默认未绑定）与向左多对象跳转（`leftMulti`，默认未绑定）**：
+   - **与右跳严格互逆**：二分查找最后一个满足 `seg.coreFrom < relPos` 的段（光标在实体内或尾随空白内均回跳该段左端）；`leftSingle` 落于 `seg.coreFrom`，`leftMulti` 遇到括号边界落于 `seg.coreFrom`、遇到实心对象落于同层连续实心序列起始 `seg.solidRunFrom`（不超过嵌套），分别与 `rightSingle` / `rightMulti` 停靠点序列 100% 互为逆序。
+4. **数学块末尾外跳与左端外跳**：
+   - **右外跳**（右侧无段且已闭合）：行内公式右侧已有水平空格则纯移至空格后，否则插入单个 `" "` 并移动至其后；块级公式闭合标记后已有换行则移至下一行行首，否则插入 `"\n"` 并移至新行行首。
+   - **左外跳**（左侧无段）：行内公式左侧紧贴非空白文本（`hello|$x$`）时在 `$` 前补 `" "` 并停于空格前（`hello| $x$`），已有水平空格且前方有同行内容（`hello |$x$`）时越过空格停于 `hello| $x$`，位于行首或仅前置缩进时仅纯移至行首而不加前导空格；块级公式同行前置全空白时有上一行则纯移至上一行行尾、第 1 行则在文首插入 `"\n"` 并停于偏移 `0`，同行前置非空白则折行将公式下移。
+5. **安全降级**：非数学区、只读、IME 合成态、多光标或非空选区时返回 `false`，完整交还原生 `Tab` / `Shift+Tab`（列表/代码块缩进与反缩进等）。
 
 ### 3.2 三类触发机制与输入劫持优先级（光标跳转 & 结构删除通用）
-针对桌面端物理键盘与移动端虚拟输入法/工具栏的差异，**向右单对象跳转**、**向右多对象跳转**与**结构删除**均支持三类触发通道：
+针对桌面端物理键盘与移动端虚拟输入法/工具栏的差异，四向**光标跳转**与**结构删除**均支持三类触发通道：
 1. **第 1 类：键盘按键劫持（适用于 PC 端物理键盘）**
-   - 在设置页「光标跳转 → 向右单对象跳转 / 向右多对象跳转」与「结构删除」子页面中支持自定义触发按键（文本框手填 + 按键录制 + 恢复默认，默认分别为 `Tab`、`Shift+Tab` 与 `Backspace`）。
-   - 通过 `Prec.highest` `keydown` 劫持介入，命中结构条件时优先拦截该按键；未命中结构条件时完整放行。
+   - 在设置页「光标跳转 → 四向子页面」与「结构删除」子页面中支持自定义触发按键（文本框手填 + 按键录制 + 恢复默认，默认分别为 `Tab`、`Shift+Tab`、左单/左多未绑定与 `Backspace`；左单/左多支持清空保存为未绑定）。
+   - 通过 `Prec.highest` `keydown` 劫持介入，命中结构条件时优先拦截该按键；未命中结构条件或未绑定快捷键时完整放行。
 2. **第 2 类：输入检测触发规则（全端通用，支持多规则 + 纯匹配 / 正则 / JavaScript，持久化于 `trigger.json`）**
    - 核心语义：**检测到输入 `xxx` ➔ 自动将 `xxx` 删除，并立即触发光标跳转（或结构化整体删除）**（单字符触发直接在 `inputHandler` 阶段阻断上屏并执行动作；多字符触发在单步原子事务中剥离已上屏前缀并基于干净语法树计算落点/删除跨度）。
-   - 全部优先于智能输入：全局 `inputHandler` 执行优先级为 **`向右单对象跳转输入规则 ➔ 向右多对象跳转输入规则 ➔ 结构删除输入规则 ➔ 智能输入规则`**。
+   - 全部优先于智能输入：全局 `inputHandler` 执行优先级为 **`四向光标跳转输入规则 ➔ 结构删除输入规则 ➔ 智能输入规则`**。
    - 复用智能输入的 `InputRuleContext` 与上下文守卫（默认开启 `跳过 \text{...}`、`跳过手写 \command`、`跳过 \begin{...}`，可选 `词边界保护`），确保绑定 `o` 等字母时在手打 `\cos`、`\log`、`\text{hello}` 中绝不误触发；当光标位置不满足跳转或结构删除条件时，完整放行原输入。
-   - 默认列表为空，独立存储于插件目录 `trigger.json`（含 `jumpRules`、`jumpRightMultiRules` 与 `deleteRules`）。
+   - 默认列表为空，独立存储于插件目录 `trigger.json`（含 `jumpRules`、`jumpRightMultiRules`、`jumpLeftSingleRules`、`jumpLeftMultiRules` 与 `deleteRules`）。
 3. **第 3 类：移动端工具栏快捷按钮（Obsidian Mobile Toolbar）**
-   - 注册「智能光标跳转（向右单对象）」（`struct-latex:smart-jump`）、「智能光标跳转（向右多对象）」（`struct-latex:smart-jump-right-multi`）与「结构化整体删除」（`struct-latex:smart-backspace`）全局编辑器命令（配内置 Lucide 图标）。
+   - 注册四向「智能光标跳转」（`struct-latex:smart-jump`、`struct-latex:smart-jump-right-multi`、`struct-latex:smart-jump-left-single`、`struct-latex:smart-jump-left-multi`）与「结构化整体删除」（`struct-latex:smart-backspace`）全局编辑器命令（配内置 Lucide 图标）。
    - 通过 `PluginSettings.mobileToolbarInitialized` 初始化标记，在首次安装/启动插件时**默认自动将「向右单对象跳转」添加至 Obsidian 移动端工具栏**（`.obsidian/app.json` 的 `mobileToolbarCommands` 并实时刷新 `app.mobileToolbar`），同时在各跳转/删除设置页提供一键添加/移除按钮。
 
 ---

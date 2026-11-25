@@ -29,6 +29,45 @@ type JumpAction =
   | { kind: "move"; anchor: number }
   | { kind: "insert"; pos: number; text: string; anchor: number };
 
+function isLeftJumpMode(mode: StructuralJumpMode): boolean {
+  return mode === "leftSingle" || mode === "leftMulti";
+}
+
+export function resolveMathBlockLeftExit(state: EditorState, region: MathRegion): JumpAction | null {
+  const doc = state.doc;
+  const exitPos = region.blockFrom;
+  const startLine = doc.lineAt(exitPos);
+  const beforeOnLine = doc.sliceString(startLine.from, exitPos);
+
+  if (region.isBlock) {
+    if (beforeOnLine.trim().length === 0) {
+      if (startLine.number > 1) {
+        return { kind: "move", anchor: doc.line(startLine.number - 1).to };
+      }
+      return { kind: "insert", pos: startLine.from, text: "\n", anchor: 0 };
+    }
+    return { kind: "insert", pos: exitPos, text: "\n", anchor: exitPos };
+  }
+
+  let beforeSpace = exitPos;
+  while (beforeSpace > startLine.from) {
+    const ch = doc.sliceString(beforeSpace - 1, beforeSpace);
+    if (ch === " " || ch === "\t") {
+      beforeSpace--;
+    } else {
+      break;
+    }
+  }
+
+  if (beforeSpace === startLine.from) {
+    return { kind: "move", anchor: startLine.from };
+  }
+  if (beforeSpace < exitPos) {
+    return { kind: "move", anchor: beforeSpace };
+  }
+  return { kind: "insert", pos: exitPos, text: " ", anchor: exitPos };
+}
+
 function resolveMathBlockExit(state: EditorState, region: MathRegion): JumpAction | null {
   if (!region.isClosed) return null;
 
@@ -109,7 +148,9 @@ export function executeSmartJump(
     });
   }
 
-  const exitAction = resolveMathBlockExit(state, analyzed.region);
+  const exitAction = isLeftJumpMode(mode)
+    ? resolveMathBlockLeftExit(state, analyzed.region)
+    : resolveMathBlockExit(state, analyzed.region);
   if (!exitAction) return false;
 
   return dispatchJumpAction(view, exitAction);
@@ -157,17 +198,24 @@ function tryDispatchTriggerJump(
     return true;
   }
 
-  const exitAction = resolveMathBlockExit(state, analyzed.region);
+  const exitAction = isLeftJumpMode(mode)
+    ? resolveMathBlockLeftExit(state, analyzed.region)
+    : resolveMathBlockExit(state, analyzed.region);
   if (!exitAction) return false;
 
-  const changes: ChangeSpec[] = [{ from: trigFrom, to: trigTo, insert: "" }];
-  if (exitAction.kind === "insert") {
-    changes.push({ from: exitAction.pos, to: exitAction.pos, insert: exitAction.text });
-  }
+  const delSpec: ChangeSpec = { from: trigFrom, to: trigTo, insert: "" };
+  const changes: ChangeSpec[] =
+    exitAction.kind === "insert"
+      ? exitAction.pos <= trigFrom
+        ? [{ from: exitAction.pos, to: exitAction.pos, insert: exitAction.text }, delSpec]
+        : [delSpec, { from: exitAction.pos, to: exitAction.pos, insert: exitAction.text }]
+      : [delSpec];
+  const finalAnchor =
+    exitAction.anchor <= trigFrom ? exitAction.anchor : exitAction.anchor - removedLen;
 
   view.dispatch({
     changes,
-    selection: { anchor: exitAction.anchor - removedLen },
+    selection: { anchor: finalAnchor },
     scrollIntoView: true,
     annotations: [isolateHistory.of("full")],
     userEvent: "struct-latex.jump",

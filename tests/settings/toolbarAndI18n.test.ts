@@ -179,6 +179,10 @@ describe("Feature Keybind Matching & Plugin Settings Defaults", () => {
     assert.equal(DEFAULT_PLUGIN_SETTINGS.smartJumpKey, "Tab");
     assert.equal(DEFAULT_PLUGIN_SETTINGS.smartJumpRightMultiEnabled, true);
     assert.equal(DEFAULT_PLUGIN_SETTINGS.smartJumpRightMultiKey, "Shift+Tab");
+    assert.equal(DEFAULT_PLUGIN_SETTINGS.smartJumpLeftSingleEnabled, true);
+    assert.equal(DEFAULT_PLUGIN_SETTINGS.smartJumpLeftSingleKey, "");
+    assert.equal(DEFAULT_PLUGIN_SETTINGS.smartJumpLeftMultiEnabled, true);
+    assert.equal(DEFAULT_PLUGIN_SETTINGS.smartJumpLeftMultiKey, "");
     assert.equal(DEFAULT_PLUGIN_SETTINGS.parseAmbiguousBars, true);
     assert.equal(DEFAULT_PLUGIN_SETTINGS.autoSizeParens, true);
     assert.equal(DEFAULT_PLUGIN_SETTINGS.inlineMathPreview, "below");
@@ -202,6 +206,8 @@ describe("Feature Keybind Matching & Plugin Settings Defaults", () => {
     assert.equal(matchesKeyEventCombo({ ...baseEv, key: "Tab" }, undefined, "Tab"), true);
     assert.equal(matchesKeyEventCombo({ ...baseEv, key: "Tab", shiftKey: true }, "Tab", "Tab"), false);
     assert.equal(matchesKeyEventCombo({ ...baseEv, key: "Tab", shiftKey: true }, "shift+tab", "Tab"), true);
+    assert.equal(matchesKeyEventCombo({ ...baseEv, key: "Tab" }, "", ""), false);
+    assert.equal(matchesKeyEventCombo({ ...baseEv, key: "o" }, "", ""), false);
 
     // Single printable key `o` matches `o` (blocking auto/JS rules) but not `Shift+O`
     assert.equal(matchesKeyEventCombo({ ...baseEv, key: "o" }, "o", "Tab"), true);

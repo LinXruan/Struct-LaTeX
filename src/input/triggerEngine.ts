@@ -23,7 +23,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function createDefaultTriggerFile(): TriggerFileData {
-  return { version: 1, jumpRules: [], jumpRightMultiRules: [], deleteRules: [] };
+  return {
+    version: 1,
+    jumpRules: [],
+    jumpRightMultiRules: [],
+    jumpLeftSingleRules: [],
+    jumpLeftMultiRules: [],
+    deleteRules: [],
+  };
 }
 
 export function cloneTriggerRule<T extends TriggerRule>(rule: T): T {
@@ -95,17 +102,20 @@ export function validateTriggerRuleList(rawList: unknown): ValidationResult {
 export function validateTriggerFile(raw: unknown): ValidationResult {
   if (!isRecord(raw)) return { valid: false, errors: [t("val.triggerFileRoot")] };
   if (raw.version !== 1) return { valid: false, errors: [t("val.triggerFileVersion")] };
-  if (
-    !Array.isArray(raw.jumpRules) ||
-    !Array.isArray(raw.deleteRules) ||
-    (raw.jumpRightMultiRules !== undefined && !Array.isArray(raw.jumpRightMultiRules))
-  ) {
+  const optionalJumpArraysValid =
+    (raw.jumpRightMultiRules === undefined || Array.isArray(raw.jumpRightMultiRules)) &&
+    (raw.jumpLeftSingleRules === undefined || Array.isArray(raw.jumpLeftSingleRules)) &&
+    (raw.jumpLeftMultiRules === undefined || Array.isArray(raw.jumpLeftMultiRules));
+  if (!Array.isArray(raw.jumpRules) || !Array.isArray(raw.deleteRules) || !optionalJumpArraysValid) {
     return { valid: false, errors: [t("val.triggerRulesArray")] };
   }
-  const jumpRes = validateTriggerRuleList(raw.jumpRules);
-  const jumpRightMultiRes = validateTriggerRuleList(raw.jumpRightMultiRules ?? []);
-  const delRes = validateTriggerRuleList(raw.deleteRules);
-  const errors = [...jumpRes.errors, ...jumpRightMultiRes.errors, ...delRes.errors];
+  const errors = [
+    ...validateTriggerRuleList(raw.jumpRules).errors,
+    ...validateTriggerRuleList((raw.jumpRightMultiRules as unknown[] | undefined) ?? []).errors,
+    ...validateTriggerRuleList((raw.jumpLeftSingleRules as unknown[] | undefined) ?? []).errors,
+    ...validateTriggerRuleList((raw.jumpLeftMultiRules as unknown[] | undefined) ?? []).errors,
+    ...validateTriggerRuleList(raw.deleteRules).errors,
+  ];
   return { valid: errors.length === 0, errors };
 }
 

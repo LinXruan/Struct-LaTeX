@@ -20,6 +20,8 @@ import {
   removeCommandFromMobileToolbar,
   SMART_BACKSPACE_FULL_CMD_ID,
   SMART_JUMP_FULL_CMD_ID,
+  SMART_JUMP_LEFT_MULTI_FULL_CMD_ID,
+  SMART_JUMP_LEFT_SINGLE_FULL_CMD_ID,
   SMART_JUMP_RIGHT_MULTI_FULL_CMD_ID,
 } from "../../src/settings/mobileToolbarSync";
 import { RuleStorageAdapter } from "../../src/settings/ruleStore";
@@ -123,6 +125,8 @@ describe("Trigger Engine — Validation, Guards, Text/Regex/JS Evaluation & Pref
         version: 1,
         jumpRules: [],
         jumpRightMultiRules: [],
+        jumpLeftSingleRules: [],
+        jumpLeftMultiRules: [],
         deleteRules: [],
       }).valid,
       true
@@ -133,6 +137,16 @@ describe("Trigger Engine — Validation, Guards, Text/Regex/JS Evaluation & Pref
         version: 1,
         jumpRules: [],
         jumpRightMultiRules: "bad",
+        deleteRules: [],
+      }).valid,
+      false
+    );
+
+    assert.equal(
+      validateTriggerFile({
+        version: 1,
+        jumpRules: [],
+        jumpLeftSingleRules: "bad",
         deleteRules: [],
       }).valid,
       false
@@ -237,6 +251,27 @@ describe("Trigger Engine — Validation, Guards, Text/Regex/JS Evaluation & Pref
     assert.equal(rightMultiJumpRes.cleanSource, "a + b + \\frac{1}{2}");
     assert.equal(rightMultiJumpRes.targetCleanRelPos, 8);
 
+    // Multi-char jump trigger `jj` in leftSingle & leftMulti modes
+    const leftSingleRes = resolvePureStructuralJumpWithTrigger(
+      "a + bjj",
+      5,
+      7,
+      true,
+      "leftSingle"
+    );
+    assert.equal(leftSingleRes.cleanSource, "a + b");
+    assert.equal(leftSingleRes.targetCleanRelPos, 4);
+
+    const leftMultiRes = resolvePureStructuralJumpWithTrigger(
+      "\\frac{1}{2} + a + bjj",
+      19,
+      21,
+      true,
+      "leftMulti"
+    );
+    assert.equal(leftMultiRes.cleanSource, "\\frac{1}{2} + a + b");
+    assert.equal(leftMultiRes.targetCleanRelPos, 12);
+
     // Multi-char delete trigger `dd`: first `d` is in doc (`\sin d` at index 5..6), second `d` arrives
     const delSpan = resolvePureStructuralDeleteWithTrigger("\\sin d", 5, 6);
     assert.deepEqual(delSpan, { from: 0, to: 6 });
@@ -259,6 +294,8 @@ describe("TriggerStore & Mobile Toolbar Auto-Injection", () => {
     assert.equal(loadError, null);
     assert.equal(store.getRules("jump").length, 0);
     assert.equal(store.getRules("jumpRightMulti").length, 0);
+    assert.equal(store.getRules("jumpLeftSingle").length, 0);
+    assert.equal(store.getRules("jumpLeftMulti").length, 0);
     assert.equal(store.getRules("delete").length, 0);
     assert.equal(await adapter.exists(".obsidian/plugins/struct-latex/trigger.json"), true);
 
@@ -282,10 +319,34 @@ describe("TriggerStore & Mobile Toolbar Auto-Injection", () => {
         trigger: "oo",
       },
     ]);
+    await store.saveCategory("jumpLeftSingle", [
+      {
+        id: "jl1",
+        name: "hh",
+        group: "Custom",
+        type: "text",
+        enabled: true,
+        trigger: "hh",
+      },
+    ]);
+    await store.saveCategory("jumpLeftMulti", [
+      {
+        id: "jlm1",
+        name: "hhh",
+        group: "Custom",
+        type: "text",
+        enabled: true,
+        trigger: "hhh",
+      },
+    ]);
     assert.equal(store.getRules("jump").length, 1);
     assert.equal(store.getCompiled("jump").length, 1);
     assert.equal(store.getRules("jumpRightMulti").length, 1);
     assert.equal(store.getCompiled("jumpRightMulti").length, 1);
+    assert.equal(store.getRules("jumpLeftSingle").length, 1);
+    assert.equal(store.getCompiled("jumpLeftSingle").length, 1);
+    assert.equal(store.getRules("jumpLeftMulti").length, 1);
+    assert.equal(store.getCompiled("jumpLeftMulti").length, 1);
     assert.equal(store.getRules("delete").length, 0);
 
     await store.resetCategory("jump");
@@ -331,11 +392,19 @@ describe("TriggerStore & Mobile Toolbar Auto-Injection", () => {
     assert.equal(addCommandToMobileToolbar(mockApp, SMART_JUMP_FULL_CMD_ID), false);
     assert.equal(updateCount, 1);
 
-    // Can also add and remove right-multi jump and structural delete commands
+    // Can also add and remove right-multi, left-single, left-multi, and delete commands
     assert.equal(addCommandToMobileToolbar(mockApp, SMART_JUMP_RIGHT_MULTI_FULL_CMD_ID), true);
     assert.equal(isCommandInMobileToolbar(mockApp, SMART_JUMP_RIGHT_MULTI_FULL_CMD_ID), true);
     assert.equal(removeCommandFromMobileToolbar(mockApp, SMART_JUMP_RIGHT_MULTI_FULL_CMD_ID), true);
     assert.equal(isCommandInMobileToolbar(mockApp, SMART_JUMP_RIGHT_MULTI_FULL_CMD_ID), false);
+
+    assert.equal(addCommandToMobileToolbar(mockApp, SMART_JUMP_LEFT_SINGLE_FULL_CMD_ID), true);
+    assert.equal(isCommandInMobileToolbar(mockApp, SMART_JUMP_LEFT_SINGLE_FULL_CMD_ID), true);
+    assert.equal(removeCommandFromMobileToolbar(mockApp, SMART_JUMP_LEFT_SINGLE_FULL_CMD_ID), true);
+
+    assert.equal(addCommandToMobileToolbar(mockApp, SMART_JUMP_LEFT_MULTI_FULL_CMD_ID), true);
+    assert.equal(isCommandInMobileToolbar(mockApp, SMART_JUMP_LEFT_MULTI_FULL_CMD_ID), true);
+    assert.equal(removeCommandFromMobileToolbar(mockApp, SMART_JUMP_LEFT_MULTI_FULL_CMD_ID), true);
 
     assert.equal(addCommandToMobileToolbar(mockApp, SMART_BACKSPACE_FULL_CMD_ID), true);
     assert.equal(isCommandInMobileToolbar(mockApp, SMART_BACKSPACE_FULL_CMD_ID), true);

@@ -78,12 +78,13 @@ export interface DeleteSpan {
   to: number;
 }
 
-export type StructuralJumpMode = "rightSingle" | "rightMulti";
+export type StructuralJumpMode = "rightSingle" | "rightMulti" | "leftSingle" | "leftMulti";
 
 export interface JumpSegment {
   coreFrom: number;
   coreTo: number;
   to: number;
   isSolid: boolean;
+  solidRunFrom: number;
   solidRunTo: number;
 }

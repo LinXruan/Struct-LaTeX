@@ -338,3 +338,129 @@ describe("Structural Jump — Right Multi-Object (Solid Run Without Crossing Nes
     expectJump("▮|a| + |b", "|a| + |b▮", "rightMulti");
   });
 });
+
+describe("Structural Jump — Left Single-Object & Exact Inverse Symmetry", () => {
+  it("steps leftward across entities, whitespace, and nested brackets as exact reverse of rightSingle", () => {
+    expectJumpSequence(
+      "a + \\sin   (   1 + 2)   + b▮",
+      [
+        "a + \\sin   (   1 + 2)   + ▮b",
+        "a + \\sin   (   1 + 2)   ▮+ b",
+        "a + \\sin   (   1 + 2▮)   + b",
+        "a + \\sin   (   1 + ▮2)   + b",
+        "a + \\sin   (   1 ▮+ 2)   + b",
+        "a + \\sin   (   ▮1 + 2)   + b",
+        "a + \\sin   ▮(   1 + 2)   + b",
+        "a + ▮\\sin   (   1 + 2)   + b",
+        "a ▮+ \\sin   (   1 + 2)   + b",
+        "▮a + \\sin   (   1 + 2)   + b",
+      ],
+      true,
+      "leftSingle"
+    );
+  });
+
+  it("jumps from interior or trailing whitespace back to entity core start", () => {
+    expectJump("\\si▮n   + b", "▮\\sin   + b", "leftSingle");
+    expectJump("\\sin▮   + b", "▮\\sin   + b", "leftSingle");
+    expectJump("\\sin  ▮ + b", "▮\\sin   + b", "leftSingle");
+    expectJump("\\sin (  ▮ 1+2)", "\\sin ▮(   1+2)", "leftSingle");
+    expectJump("a_2^▮n", "a_2▮^n", "leftSingle");
+    expectJump("a_▮2^n", "a▮_2^n", "leftSingle");
+  });
+
+  it("steps cleanly backward across multi-slot commands, scripts, and multiline cases", () => {
+    expectJumpSequence(
+      "\\frac{  a  }{  b  }▮",
+      [
+        "\\frac{  a  }{  b  ▮}",
+        "\\frac{  a  }{  ▮b  }",
+        "\\frac{  a  ▮}{  b  }",
+        "\\frac{  ▮a  }{  b  }",
+        "▮\\frac{  a  }{  b  }",
+      ],
+      true,
+      "leftSingle"
+    );
+
+    expectJumpSequence(
+      "\\begin{cases}\n  x \\\\\n  y\n\\end{cases}▮",
+      [
+        "\\begin{cases}\n  x \\\\\n  y\n▮\\end{cases}",
+        "\\begin{cases}\n  x \\\\\n  ▮y\n\\end{cases}",
+        "\\begin{cases}\n  x ▮\\\\\n  y\n\\end{cases}",
+        "\\begin{cases}\n  ▮x \\\\\n  y\n\\end{cases}",
+        "▮\\begin{cases}\n  x \\\\\n  y\n\\end{cases}",
+      ],
+      true,
+      "leftSingle"
+    );
+  });
+
+  it("signals left math-block exit at leading whitespace or start", () => {
+    expectExit("▮", "leftSingle");
+    expectExit("   ▮   ", "leftSingle");
+    expectExit("\n  ▮a + b\n", "leftSingle");
+    expectExit("\n ▮ a + b\n", "leftSingle");
+  });
+});
+
+describe("Structural Jump — Left Multi-Object (Solid Run Start Without Crossing Nesting)", () => {
+  it("jumps directly to the start of contiguous same-level solid objects", () => {
+    expectJump("1234 + 5678▮", "▮1234 + 5678", "leftMulti");
+    expectJump("\\si▮n x + b_2^n", "▮\\sin x + b_2^n", "leftMulti");
+    expectJump("a + b ▮+ c + d", "▮a + b + c + d", "leftMulti");
+    expectJump("a + b +▮ c + d", "▮a + b + c + d", "leftMulti");
+    expectExit("▮1234 + 5678", "leftMulti");
+  });
+
+  it("is the exact inverse of rightMulti across nested brackets", () => {
+    expectJumpSequence(
+      "a + b + \\frac{1 + 2}{3 + 4} + c + d▮",
+      [
+        "a + b + \\frac{1 + 2}{3 + 4} ▮+ c + d",
+        "a + b + \\frac{1 + 2}{3 + 4▮} + c + d",
+        "a + b + \\frac{1 + 2}{▮3 + 4} + c + d",
+        "a + b + \\frac{1 + 2▮}{3 + 4} + c + d",
+        "a + b + \\frac{▮1 + 2}{3 + 4} + c + d",
+        "a + b + ▮\\frac{1 + 2}{3 + 4} + c + d",
+        "▮a + b + \\frac{1 + 2}{3 + 4} + c + d",
+      ],
+      true,
+      "leftMulti"
+    );
+  });
+
+  it("handles whitespace between brackets and solid runs, multiline envs, \\text{}, and bars", () => {
+    expectJump("\\frac{1}{2}  ▮+ a + b", "\\frac{1}{2▮}  + a + b", "leftMulti");
+    expectJump("\\frac{1}{2} ▮ + a + b", "\\frac{1}{2▮}  + a + b", "leftMulti");
+    expectJump("a + b +  ▮\\frac{1}{2}", "▮a + b +  \\frac{1}{2}", "leftMulti");
+
+    expectJumpSequence(
+      "(x)_2^n + y▮",
+      ["(x)▮_2^n + y", "(x▮)_2^n + y", "(▮x)_2^n + y", "▮(x)_2^n + y"],
+      true,
+      "leftMulti"
+    );
+
+    expectJumpSequence(
+      "\\begin{cases}\n  x = 1 \\\\\n  y = 2\n\\end{cases}▮",
+      [
+        "\\begin{cases}\n  x = 1 \\\\\n  y = 2\n▮\\end{cases}",
+        "\\begin{cases}\n  ▮x = 1 \\\\\n  y = 2\n\\end{cases}",
+        "▮\\begin{cases}\n  x = 1 \\\\\n  y = 2\n\\end{cases}",
+      ],
+      true,
+      "leftMulti"
+    );
+
+    expectJumpSequence(
+      "\\text{hello world}▮",
+      ["\\text{hello world▮}", "\\text{▮hello world}", "▮\\text{hello world}"],
+      true,
+      "leftMulti"
+    );
+
+    expectJump("|a| + |b▮", "▮|a| + |b", "leftMulti");
+  });
+});

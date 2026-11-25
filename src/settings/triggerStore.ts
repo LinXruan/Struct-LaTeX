@@ -16,7 +16,13 @@ import {
 } from "../input/triggerTypes";
 import { RuleStorageAdapter, RuleStoreAppLike } from "./ruleStore";
 
-const TRIGGER_CATEGORIES: readonly TriggerCategory[] = ["jump", "jumpRightMulti", "delete"];
+const TRIGGER_CATEGORIES: readonly TriggerCategory[] = [
+  "jump",
+  "jumpRightMulti",
+  "jumpLeftSingle",
+  "jumpLeftMulti",
+  "delete",
+];
 
 function normalizeVaultPath(path: string): string {
   return path.replace(/\\/g, "/").replace(/\/+/g, "/").replace(/^\/+|\/+$/g, "");
@@ -59,6 +65,8 @@ export class TriggerStore {
     const rawMap: Record<TriggerCategory, readonly TriggerRule[]> = {
       jump: data.jumpRules,
       jumpRightMulti: data.jumpRightMultiRules ?? [],
+      jumpLeftSingle: data.jumpLeftSingleRules ?? [],
+      jumpLeftMulti: data.jumpLeftMultiRules ?? [],
       delete: data.deleteRules,
     };
     for (const cat of TRIGGER_CATEGORIES) {
@@ -75,6 +83,8 @@ export class TriggerStore {
       version: 1,
       jumpRules: pick("jump"),
       jumpRightMultiRules: pick("jumpRightMulti"),
+      jumpLeftSingleRules: pick("jumpLeftSingle"),
+      jumpLeftMultiRules: pick("jumpLeftMulti"),
       deleteRules: pick("delete"),
     };
   }

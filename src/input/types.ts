@@ -68,6 +68,10 @@ export interface PluginSettings {
   smartJumpKey: string;
   smartJumpRightMultiEnabled: boolean;
   smartJumpRightMultiKey: string;
+  smartJumpLeftSingleEnabled: boolean;
+  smartJumpLeftSingleKey: string;
+  smartJumpLeftMultiEnabled: boolean;
+  smartJumpLeftMultiKey: string;
   outputDialect: OutputDialect;
   parseAmbiguousBars: boolean;
   autoSizeParens: boolean;
@@ -84,6 +88,10 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginSettings = {
   smartJumpKey: "Tab",
   smartJumpRightMultiEnabled: true,
   smartJumpRightMultiKey: "Shift+Tab",
+  smartJumpLeftSingleEnabled: true,
+  smartJumpLeftSingleKey: "",
+  smartJumpLeftMultiEnabled: true,
+  smartJumpLeftMultiKey: "",
   outputDialect: "latex",
   parseAmbiguousBars: true,
   autoSizeParens: true,

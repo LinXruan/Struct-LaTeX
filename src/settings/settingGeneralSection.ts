@@ -36,6 +36,8 @@ export interface KeybindFeaturePageOptions {
   onToggle: (enabled: boolean) => Promise<void>;
   keybindValue: string;
   defaultKeybind: string;
+  allowEmpty?: boolean;
+  keybindPlaceholder?: string;
   onKeybindCommit: (normalized: string) => Promise<void>;
   onOpenTriggerEditor?: (
     rule: TriggerRule,
@@ -187,7 +189,9 @@ export function renderKeybindFeaturePage(parent: HTMLElement, options: KeybindFe
     .setName(t("settings.keybind.name"))
     .setDesc(t("settings.keybind.desc"))
     .addText((text) => {
-      text.setPlaceholder(options.defaultKeybind).setValue(lastValid);
+      text
+        .setPlaceholder(options.keybindPlaceholder ?? options.defaultKeybind)
+        .setValue(lastValid);
       inputEl = text.inputEl;
       inputEl.addClass("struct-latex-keybind-input");
       text.onChange((val) => void commitKeybind(val, false));
@@ -205,7 +209,16 @@ export function renderKeybindFeaturePage(parent: HTMLElement, options: KeybindFe
     errEl.setText(msg);
   };
   const commitKeybind = async (raw: string, syncInput: boolean) => {
-    const normalized = normalizeKeyCombo(raw.trim());
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      if (!options.allowEmpty) return setError(t("settings.keybind.invalid"));
+      setError(null);
+      lastValid = "";
+      if (syncInput && inputEl) inputEl.value = "";
+      await options.onKeybindCommit("");
+      return;
+    }
+    const normalized = normalizeKeyCombo(trimmed);
     if (!normalized) return setError(t("settings.keybind.invalid"));
     setError(null);
     lastValid = normalized;
@@ -216,7 +229,7 @@ export function renderKeybindFeaturePage(parent: HTMLElement, options: KeybindFe
     const el: HTMLInputElement = inputEl;
     el.addEventListener("blur", () => {
       const trimmed = el.value.trim();
-      if (!trimmed) {
+      if (!trimmed && !options.allowEmpty) {
         el.value = lastValid;
         return setError(null);
       }
@@ -261,29 +274,25 @@ export function renderKeybindFeaturePage(parent: HTMLElement, options: KeybindFe
 
 export function renderFeatureCategoryPage(
   parent: HTMLElement,
-  category: "delete" | "jump",
+  _category: "delete",
   host: GeneralSettingsHost,
   onOpenTriggerEditor?: KeybindFeaturePageOptions["onOpenTriggerEditor"]
 ): () => void {
-  const isDelete = category === "delete";
-  const defaultKey = isDelete ? DEFAULT_PLUGIN_SETTINGS.smartBackspaceKey : DEFAULT_PLUGIN_SETTINGS.smartJumpKey;
   return renderKeybindFeaturePage(parent, {
-    category,
+    category: "delete",
     app: host.app,
     triggerStore: host.triggerStore,
-    toggleName: t(isDelete ? "settings.smartBackspace.name" : "settings.smartJump.name"),
-    toggleDesc: t(isDelete ? "settings.smartBackspace.desc" : "settings.smartJump.desc"),
-    enabled: isDelete ? host.settings.smartBackspaceEnabled : host.settings.smartJumpEnabled,
+    toggleName: t("settings.smartBackspace.name"),
+    toggleDesc: t("settings.smartBackspace.desc"),
+    enabled: host.settings.smartBackspaceEnabled,
     onToggle: async (v) => {
-      if (isDelete) host.settings.smartBackspaceEnabled = v;
-      else host.settings.smartJumpEnabled = v;
+      host.settings.smartBackspaceEnabled = v;
       await host.saveSettings();
     },
-    keybindValue: isDelete ? host.settings.smartBackspaceKey : host.settings.smartJumpKey,
-    defaultKeybind: defaultKey,
+    keybindValue: host.settings.smartBackspaceKey,
+    defaultKeybind: DEFAULT_PLUGIN_SETTINGS.smartBackspaceKey,
     onKeybindCommit: async (normalized) => {
-      if (isDelete) host.settings.smartBackspaceKey = normalized;
-      else host.settings.smartJumpKey = normalized;
+      host.settings.smartBackspaceKey = normalized;
       await host.saveSettings();
     },
     onOpenTriggerEditor,

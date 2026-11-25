@@ -1,6 +1,8 @@
 import { Setting } from "obsidian";
 import { t } from "../i18n";
-import { DEFAULT_PLUGIN_SETTINGS } from "../input/types";
+import { TriggerCategory } from "../input/triggerTypes";
+import { DEFAULT_PLUGIN_SETTINGS, PluginSettings } from "../input/types";
+import { StructuralJumpMode } from "../parser/types";
 import {
   GeneralSettingsHost,
   KeybindFeaturePageOptions,
@@ -8,7 +10,7 @@ import {
   renderSubPageHeader,
 } from "./settingGeneralSection";
 
-export type JumpSubPage = "rightSingle" | "rightMulti";
+export type JumpSubPage = StructuralJumpMode;
 
 export interface JumpSectionCallbacks {
   onBackHome: () => void;
@@ -17,47 +19,99 @@ export interface JumpSectionCallbacks {
   onOpenTriggerEditor?: KeybindFeaturePageOptions["onOpenTriggerEditor"];
 }
 
+interface JumpModeSpec {
+  mode: JumpSubPage;
+  category: TriggerCategory;
+  nameKey:
+    | "settings.jump.rightSingle.name"
+    | "settings.jump.rightMulti.name"
+    | "settings.jump.leftSingle.name"
+    | "settings.jump.leftMulti.name";
+  descKey:
+    | "settings.jump.rightSingle.desc"
+    | "settings.jump.rightMulti.desc"
+    | "settings.jump.leftSingle.desc"
+    | "settings.jump.leftMulti.desc";
+  toggleNameKey:
+    | "settings.smartJump.name"
+    | "settings.smartJumpRightMulti.name"
+    | "settings.smartJumpLeftSingle.name"
+    | "settings.smartJumpLeftMulti.name";
+  toggleDescKey:
+    | "settings.smartJump.desc"
+    | "settings.smartJumpRightMulti.desc"
+    | "settings.smartJumpLeftSingle.desc"
+    | "settings.smartJumpLeftMulti.desc";
+  enabledKey:
+    | "smartJumpEnabled"
+    | "smartJumpRightMultiEnabled"
+    | "smartJumpLeftSingleEnabled"
+    | "smartJumpLeftMultiEnabled";
+  keybindKey:
+    | "smartJumpKey"
+    | "smartJumpRightMultiKey"
+    | "smartJumpLeftSingleKey"
+    | "smartJumpLeftMultiKey";
+  allowEmpty: boolean;
+}
+
+const JUMP_MODE_SPECS: readonly JumpModeSpec[] = [
+  {
+    mode: "rightSingle",
+    category: "jump",
+    nameKey: "settings.jump.rightSingle.name",
+    descKey: "settings.jump.rightSingle.desc",
+    toggleNameKey: "settings.smartJump.name",
+    toggleDescKey: "settings.smartJump.desc",
+    enabledKey: "smartJumpEnabled",
+    keybindKey: "smartJumpKey",
+    allowEmpty: false,
+  },
+  {
+    mode: "rightMulti",
+    category: "jumpRightMulti",
+    nameKey: "settings.jump.rightMulti.name",
+    descKey: "settings.jump.rightMulti.desc",
+    toggleNameKey: "settings.smartJumpRightMulti.name",
+    toggleDescKey: "settings.smartJumpRightMulti.desc",
+    enabledKey: "smartJumpRightMultiEnabled",
+    keybindKey: "smartJumpRightMultiKey",
+    allowEmpty: false,
+  },
+  {
+    mode: "leftSingle",
+    category: "jumpLeftSingle",
+    nameKey: "settings.jump.leftSingle.name",
+    descKey: "settings.jump.leftSingle.desc",
+    toggleNameKey: "settings.smartJumpLeftSingle.name",
+    toggleDescKey: "settings.smartJumpLeftSingle.desc",
+    enabledKey: "smartJumpLeftSingleEnabled",
+    keybindKey: "smartJumpLeftSingleKey",
+    allowEmpty: true,
+  },
+  {
+    mode: "leftMulti",
+    category: "jumpLeftMulti",
+    nameKey: "settings.jump.leftMulti.name",
+    descKey: "settings.jump.leftMulti.desc",
+    toggleNameKey: "settings.smartJumpLeftMulti.name",
+    toggleDescKey: "settings.smartJumpLeftMulti.desc",
+    enabledKey: "smartJumpLeftMultiEnabled",
+    keybindKey: "smartJumpLeftMultiKey",
+    allowEmpty: true,
+  },
+];
+
 function renderJumpHubPage(
   parent: HTMLElement,
   onSelectMode: (mode: JumpSubPage) => void
 ): void {
-  const readyModes: Array<{ mode: JumpSubPage; name: string; desc: string }> = [
-    {
-      mode: "rightSingle",
-      name: t("settings.jump.rightSingle.name"),
-      desc: t("settings.jump.rightSingle.desc"),
-    },
-    {
-      mode: "rightMulti",
-      name: t("settings.jump.rightMulti.name"),
-      desc: t("settings.jump.rightMulti.desc"),
-    },
-  ];
-  for (const item of readyModes) {
+  for (const spec of JUMP_MODE_SPECS) {
     new Setting(parent)
-      .setName(item.name)
-      .setDesc(item.desc)
+      .setName(t(spec.nameKey))
+      .setDesc(t(spec.descKey))
       .addButton((btn) =>
-        btn.setButtonText(t("settings.nav.openBtn")).onClick(() => onSelectMode(item.mode))
-      );
-  }
-
-  const reservedModes: Array<{ name: string; desc: string }> = [
-    {
-      name: t("settings.jump.leftSingle.name"),
-      desc: t("settings.jump.leftSingle.desc"),
-    },
-    {
-      name: t("settings.jump.leftMulti.name"),
-      desc: t("settings.jump.leftMulti.desc"),
-    },
-  ];
-  for (const item of reservedModes) {
-    new Setting(parent)
-      .setName(item.name)
-      .setDesc(item.desc)
-      .addButton((btn) =>
-        btn.setButtonText(t("settings.jump.comingSoon")).setDisabled(true)
+        btn.setButtonText(t("settings.nav.openBtn")).onClick(() => onSelectMode(spec.mode))
       );
   }
 }
@@ -74,33 +128,34 @@ export function renderJumpSection(
     return () => {};
   }
 
-  const isRightMulti = activeMode === "rightMulti";
+  const spec = JUMP_MODE_SPECS.find((s) => s.mode === activeMode) ?? JUMP_MODE_SPECS[0];
   renderSubPageHeader(
     parent,
-    t(isRightMulti ? "settings.jump.rightMulti.name" : "settings.jump.rightSingle.name"),
+    t(spec.nameKey),
     callbacks.onBackToHub,
     t("settings.jump.backToHub")
   );
 
+  const settingsRecord: PluginSettings = host.settings;
+  const defaultKey = DEFAULT_PLUGIN_SETTINGS[spec.keybindKey];
+
   return renderKeybindFeaturePage(parent, {
-    category: isRightMulti ? "jumpRightMulti" : "jump",
+    category: spec.category,
     app: host.app,
     triggerStore: host.triggerStore,
-    toggleName: t(isRightMulti ? "settings.smartJumpRightMulti.name" : "settings.smartJump.name"),
-    toggleDesc: t(isRightMulti ? "settings.smartJumpRightMulti.desc" : "settings.smartJump.desc"),
-    enabled: isRightMulti ? host.settings.smartJumpRightMultiEnabled : host.settings.smartJumpEnabled,
+    toggleName: t(spec.toggleNameKey),
+    toggleDesc: t(spec.toggleDescKey),
+    enabled: settingsRecord[spec.enabledKey],
     onToggle: async (v) => {
-      if (isRightMulti) host.settings.smartJumpRightMultiEnabled = v;
-      else host.settings.smartJumpEnabled = v;
+      settingsRecord[spec.enabledKey] = v;
       await host.saveSettings();
     },
-    keybindValue: isRightMulti ? host.settings.smartJumpRightMultiKey : host.settings.smartJumpKey,
-    defaultKeybind: isRightMulti
-      ? DEFAULT_PLUGIN_SETTINGS.smartJumpRightMultiKey
-      : DEFAULT_PLUGIN_SETTINGS.smartJumpKey,
+    keybindValue: settingsRecord[spec.keybindKey],
+    defaultKeybind: defaultKey,
+    allowEmpty: spec.allowEmpty,
+    keybindPlaceholder: spec.allowEmpty ? t("settings.keybind.unboundPlaceholder") : defaultKey,
     onKeybindCommit: async (normalized) => {
-      if (isRightMulti) host.settings.smartJumpRightMultiKey = normalized;
-      else host.settings.smartJumpKey = normalized;
+      settingsRecord[spec.keybindKey] = normalized;
       await host.saveSettings();
     },
     onOpenTriggerEditor: callbacks.onOpenTriggerEditor,

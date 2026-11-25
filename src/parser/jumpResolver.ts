@@ -8,7 +8,7 @@ function pushSegment(
   isSolid: boolean
 ): void {
   if (coreTo > coreFrom) {
-    segments.push({ coreFrom, coreTo, to, isSolid, solidRunTo: to });
+    segments.push({ coreFrom, coreTo, to, isSolid, solidRunFrom: coreFrom, solidRunTo: to });
   }
 }
 
@@ -49,7 +49,7 @@ function collectListSegments(objects: readonly LatexObject[], segments: JumpSegm
 /**
  * Flattens the math object tree in pre-order into strictly monotonic jump segments.
  * Each segment represents an entity core `[coreFrom, coreTo)` plus its trailing whitespace `[coreTo, to]`,
- * and precomputes `solidRunTo` for same-level consecutive solid objects.
+ * and precomputes `solidRunFrom` / `solidRunTo` for same-level consecutive solid objects.
  */
 export function collectJumpSegments(tree: MathTree): JumpSegment[] {
   const segments: JumpSegment[] = [];
@@ -57,30 +57,25 @@ export function collectJumpSegments(tree: MathTree): JumpSegment[] {
 
   // Bracket boundaries always separate solid objects across nesting levels,
   // so contiguous `isSolid` segments correspond 1-to-1 to same-level solid runs.
+  for (let i = 1; i < segments.length; i++) {
+    if (segments[i].isSolid && segments[i - 1].isSolid) {
+      segments[i].solidRunFrom = segments[i - 1].solidRunFrom;
+    }
+  }
   for (let i = segments.length - 1; i >= 0; i--) {
-    const seg = segments[i];
-    if (seg.isSolid && i + 1 < segments.length && segments[i + 1].isSolid) {
-      seg.solidRunTo = segments[i + 1].solidRunTo;
+    if (segments[i].isSolid && i + 1 < segments.length && segments[i + 1].isSolid) {
+      segments[i].solidRunTo = segments[i + 1].solidRunTo;
     }
   }
 
   return segments;
 }
 
-/**
- * Resolves the next jump offset (relative to math block content start) for `relPos`:
- * - Finds the first segment whose entity core extends past `relPos` (`seg.coreTo > relPos`).
- * - In `"rightSingle"` mode, lands at `seg.to` (single object / bracket boundary).
- * - In `"rightMulti"` mode, lands at `seg.solidRunTo` (end of contiguous same-level solid run, or `seg.to` on brackets).
- * - Returns `null` when no remaining segment exists, signaling a math-block exit.
- */
-export function resolveStructuralJump(
-  tree: MathTree,
+function resolveRightJump(
+  segments: readonly JumpSegment[],
   relPos: number,
-  cachedSegments?: readonly JumpSegment[],
-  mode: StructuralJumpMode = "rightSingle"
+  multi: boolean
 ): number | null {
-  const segments = cachedSegments ?? collectJumpSegments(tree);
   let lo = 0;
   let hi = segments.length;
 
@@ -94,5 +89,47 @@ export function resolveStructuralJump(
   }
 
   if (lo >= segments.length) return null;
-  return mode === "rightMulti" ? segments[lo].solidRunTo : segments[lo].to;
+  return multi ? segments[lo].solidRunTo : segments[lo].to;
+}
+
+function resolveLeftJump(
+  segments: readonly JumpSegment[],
+  relPos: number,
+  multi: boolean
+): number | null {
+  let lo = 0;
+  let hi = segments.length;
+
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (segments[mid].coreFrom < relPos) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
+    }
+  }
+
+  const idx = lo - 1;
+  if (idx < 0) return null;
+  return multi ? segments[idx].solidRunFrom : segments[idx].coreFrom;
+}
+
+/**
+ * Resolves the next jump offset (relative to math block content start) for `relPos`:
+ * - Right modes find the first segment whose core extends past `relPos` (`seg.coreTo > relPos`).
+ * - Left modes find the last segment starting before `relPos` (`seg.coreFrom < relPos`).
+ * - Single modes land on `seg.to` / `seg.coreFrom`; multi modes jump to `solidRunTo` / `solidRunFrom`.
+ * - Returns `null` when no remaining segment exists, signaling a math-block exit.
+ */
+export function resolveStructuralJump(
+  tree: MathTree,
+  relPos: number,
+  cachedSegments?: readonly JumpSegment[],
+  mode: StructuralJumpMode = "rightSingle"
+): number | null {
+  const segments = cachedSegments ?? collectJumpSegments(tree);
+  if (mode === "leftSingle" || mode === "leftMulti") {
+    return resolveLeftJump(segments, relPos, mode === "leftMulti");
+  }
+  return resolveRightJump(segments, relPos, mode === "rightMulti");
 }

@@ -3,15 +3,21 @@ import { TriggerCategory } from "../input/triggerTypes";
 
 export const SMART_JUMP_COMMAND_ID = "smart-jump";
 export const SMART_JUMP_RIGHT_MULTI_COMMAND_ID = "smart-jump-right-multi";
+export const SMART_JUMP_LEFT_SINGLE_COMMAND_ID = "smart-jump-left-single";
+export const SMART_JUMP_LEFT_MULTI_COMMAND_ID = "smart-jump-left-multi";
 export const SMART_BACKSPACE_COMMAND_ID = "smart-backspace";
 
 export const SMART_JUMP_FULL_CMD_ID = "struct-latex:smart-jump";
 export const SMART_JUMP_RIGHT_MULTI_FULL_CMD_ID = "struct-latex:smart-jump-right-multi";
+export const SMART_JUMP_LEFT_SINGLE_FULL_CMD_ID = "struct-latex:smart-jump-left-single";
+export const SMART_JUMP_LEFT_MULTI_FULL_CMD_ID = "struct-latex:smart-jump-left-multi";
 export const SMART_BACKSPACE_FULL_CMD_ID = "struct-latex:smart-backspace";
 
 const CATEGORY_TO_FULL_CMD_ID: Record<TriggerCategory, string> = {
   jump: SMART_JUMP_FULL_CMD_ID,
   jumpRightMulti: SMART_JUMP_RIGHT_MULTI_FULL_CMD_ID,
+  jumpLeftSingle: SMART_JUMP_LEFT_SINGLE_FULL_CMD_ID,
+  jumpLeftMulti: SMART_JUMP_LEFT_MULTI_FULL_CMD_ID,
   delete: SMART_BACKSPACE_FULL_CMD_ID,
 };
 
