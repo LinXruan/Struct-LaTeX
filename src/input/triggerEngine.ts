@@ -111,9 +111,9 @@ export function validateTriggerFile(raw: unknown): ValidationResult {
   }
   const errors = [
     ...validateTriggerRuleList(raw.jumpRules).errors,
-    ...validateTriggerRuleList((raw.jumpRightMultiRules as unknown[] | undefined) ?? []).errors,
-    ...validateTriggerRuleList((raw.jumpLeftSingleRules as unknown[] | undefined) ?? []).errors,
-    ...validateTriggerRuleList((raw.jumpLeftMultiRules as unknown[] | undefined) ?? []).errors,
+    ...validateTriggerRuleList(raw.jumpRightMultiRules ?? []).errors,
+    ...validateTriggerRuleList(raw.jumpLeftSingleRules ?? []).errors,
+    ...validateTriggerRuleList(raw.jumpLeftMultiRules ?? []).errors,
     ...validateTriggerRuleList(raw.deleteRules).errors,
   ];
   return { valid: errors.length === 0, errors };
