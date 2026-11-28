@@ -1,8 +1,9 @@
-import { Notice, Setting } from "obsidian";
+import { App } from "obsidian";
 import { getLocale, t } from "../i18n";
 import { TriggerCategory, TriggerRule } from "../input/triggerTypes";
-import { copyTextareaContent, InlinePanelMode } from "./ruleInlinePanels";
-import { createDefaultFilterState, FilterState, renderFilterToolbar } from "./settingToolbar";
+import { openConfirmResetModal, openExportJsonModal, openImportJsonModal } from "./ruleActionModals";
+import { createDefaultFilterState, FilterState } from "./ruleFilter";
+import { renderRuleSectionToolbar } from "./settingToolbar";
 import {
   createDraftTriggerRule,
   filterTriggerRules,
@@ -12,6 +13,7 @@ import {
 import { TriggerStore } from "./triggerStore";
 
 export interface TriggerSectionCallbacks {
+  app: App;
   category: TriggerCategory;
   triggerStore: TriggerStore;
   onOpenEditor: (
@@ -21,86 +23,16 @@ export interface TriggerSectionCallbacks {
   ) => void;
 }
 
-function renderTriggerInlinePanel(
-  container: HTMLElement,
-  mode: InlinePanelMode,
-  triggerStore: TriggerStore,
-  category: TriggerCategory,
-  onMutated: () => void,
-  onClose: () => void
-): void {
-  container.empty();
-  const panel = container.createDiv({ cls: "struct-latex-inline-panel" });
-  const header = panel.createDiv({ cls: "struct-latex-inline-panel-header" });
-  const titleText =
-    mode === "export"
-      ? t("trigger.toolbar.export")
-      : mode === "import"
-      ? t("trigger.toolbar.import")
-      : t("trigger.reset.title");
-  header.createDiv({ cls: "struct-latex-inline-panel-title", text: titleText });
-  header.createEl("button", { text: t("panel.close") }).addEventListener("click", onClose);
-
-  if (mode === "export") {
-    const actionBar = panel.createDiv({ cls: "struct-latex-inline-panel-actions" });
-    const copyBtn = actionBar.createEl("button", { cls: "mod-cta", text: t("modals.json.copy") });
-    const textarea = panel.createEl("textarea", {
-      cls: "struct-latex-js-editor struct-latex-json-transfer",
-    });
-    textarea.value = triggerStore.exportJson();
-    textarea.readOnly = true;
-    copyBtn.addEventListener("click", () => {
-      void copyTextareaContent(textarea);
-    });
-    return;
-  }
-
-  if (mode === "import") {
-    const textarea = panel.createEl("textarea", {
-      cls: "struct-latex-js-editor struct-latex-json-transfer",
-    });
-    textarea.placeholder = t("trigger.panel.importPlaceholder");
-    const errEl = panel.createDiv({ cls: "struct-latex-modal-error struct-latex-hidden" });
-    const footer = panel.createDiv({ cls: "struct-latex-inline-panel-actions" });
-    footer.createEl("button", { text: t("modal.cancel") }).addEventListener("click", onClose);
-    footer.createEl("button", { cls: "mod-cta", text: t("modals.json.importBtn") }).addEventListener("click", () => {
-      void (async () => {
-        try {
-          errEl.addClass("struct-latex-hidden");
-          await triggerStore.importJson(textarea.value);
-          new Notice(t("modals.json.importedNotice"));
-          onMutated();
-          onClose();
-        } catch (err) {
-          errEl.removeClass("struct-latex-hidden");
-          errEl.setText((err as Error).message);
-        }
-      })();
-    });
-    return;
-  }
-
-  panel.createEl("p", { cls: "struct-latex-inline-panel-body", text: t("trigger.reset.body") });
-  const footer = panel.createDiv({ cls: "struct-latex-inline-panel-actions" });
-  footer.createEl("button", { text: t("modal.cancel") }).addEventListener("click", onClose);
-  footer.createEl("button", { cls: "mod-warning", text: t("trigger.reset.confirm") }).addEventListener("click", () => {
-    void (async () => {
-      await triggerStore.resetCategory(category);
-      new Notice(t("trigger.reset.doneNotice"));
-      onMutated();
-      onClose();
-    })();
-  });
-}
-
+/**
+ * Renders the trigger rules section (header menu, search/filter bar, and list).
+ */
 export function renderTriggerRulesSection(
   parent: HTMLElement,
   options: TriggerSectionCallbacks
 ): () => void {
-  const { category, triggerStore } = options;
+  const { app, category, triggerStore } = options;
   const filter: FilterState = createDefaultFilterState();
   let pendingNewTextDraft: TriggerRule | null = null;
-  let activeInlinePanel: InlinePanelMode | null = null;
   const rowCache = new Map<string, { sig: string; el: HTMLElement }>();
 
   const loadErr = triggerStore.getLoadError();
@@ -120,38 +52,45 @@ export function renderTriggerRulesSection(
     await triggerStore.saveCategory(category, next);
   };
 
-  const addSetting = new Setting(parent)
-    .setName(t("trigger.addRule.name"))
-    .setDesc(t("trigger.addRule.desc", { path: triggerStore.filePath, count: triggerStore.getRules(category).length }))
-    .addButton((b) =>
-      b.setButtonText(t("trigger.addText")).onClick(() => {
-        closeInlinePanel();
-        pendingNewTextDraft = createDraftTriggerRule("text", category);
-        renderList();
-      })
-    )
-    .addButton((b) =>
-      b.setButtonText(t("settings.addRegex")).onClick(() =>
-        options.onOpenEditor(createDraftTriggerRule("regex", category), true, async (saved, isNew) => {
-          await upsertAndSave(saved, isNew);
-          refreshAll();
-        })
-      )
-    )
-    .addButton((b) =>
-      b.setButtonText(t("settings.addJs")).onClick(() =>
-        options.onOpenEditor(createDraftTriggerRule("js", category), true, async (saved, isNew) => {
-          await upsertAndSave(saved, isNew);
-          refreshAll();
-        })
-      )
-    );
+  const openEditorForType = (type: "regex" | "js") => {
+    options.onOpenEditor(createDraftTriggerRule(type, category), true, async (saved, isNew) => {
+      await upsertAndSave(saved, isNew);
+      refreshAll();
+    });
+  };
 
-  const toolbarHandle = renderFilterToolbar(parent, triggerStore.getRules(category), filter, () => renderList(), {
-    onExport: () => toggleInlinePanel("export"),
-    onImport: () => toggleInlinePanel("import"),
-    onReset: () => toggleInlinePanel("reset"),
+  const toolbarHandle = renderRuleSectionToolbar(parent, {
+    title: t("trigger.addRule.name"),
+    subtitle: t("trigger.addRule.desc"),
+    rules: triggerStore.getRules(category),
+    filter,
+    onFilterChanged: () => renderList(),
+    onAddText: () => {
+      pendingNewTextDraft = createDraftTriggerRule("text", category);
+      renderList();
+    },
+    onAddRegex: () => openEditorForType("regex"),
+    onAddJs: () => openEditorForType("js"),
+    onExport: () => openExportJsonModal(app, t("trigger.toolbar.export"), triggerStore.exportJson()),
+    onImport: () =>
+      openImportJsonModal(app, t("trigger.toolbar.import"), t("trigger.panel.importPlaceholder"), async (raw) => {
+        await triggerStore.importJson(raw);
+        refreshAll();
+      }),
+    onReset: () =>
+      openConfirmResetModal(
+        app,
+        t("trigger.reset.title"),
+        t("trigger.reset.body"),
+        t("trigger.reset.confirm"),
+        t("trigger.reset.doneNotice"),
+        async () => {
+          await triggerStore.resetCategory(category);
+          refreshAll();
+        }
+      ),
     labels: {
+      addTextLabel: t("trigger.addText.label"),
       exportText: t("trigger.toolbar.export"),
       importText: t("trigger.toolbar.import"),
       resetText: t("trigger.toolbar.reset"),
@@ -159,28 +98,14 @@ export function renderTriggerRulesSection(
     },
   });
 
-  const inlinePanelEl = parent.createDiv();
   const listEl = parent.createDiv({ cls: "struct-latex-rule-list" });
-
-  const closeInlinePanel = () => {
-    activeInlinePanel = null;
-    inlinePanelEl.empty();
-    toolbarHandle.syncActivePanel(null);
-  };
-  const toggleInlinePanel = (mode: InlinePanelMode) => {
-    if (activeInlinePanel === mode) return closeInlinePanel();
-    activeInlinePanel = mode;
-    toolbarHandle.syncActivePanel(mode);
-    renderTriggerInlinePanel(inlinePanelEl, mode, triggerStore, category, refreshAll, closeInlinePanel);
-  };
 
   const getRowSig = (rule: TriggerRule, isDraft: boolean) =>
     `${category}:${getLocale()}:${isDraft ? 1 : 0}:${JSON.stringify(rule)}`;
 
   const refreshAll = () => {
     const rules = triggerStore.getRules(category);
-    addSetting.setDesc(t("trigger.addRule.desc", { path: triggerStore.filePath, count: rules.length }));
-    toolbarHandle.syncGroups(rules);
+    toolbarHandle.syncRulesMeta(rules);
     rowCache.clear();
     renderList();
   };

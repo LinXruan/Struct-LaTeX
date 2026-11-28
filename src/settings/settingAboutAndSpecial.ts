@@ -2,9 +2,10 @@ import { PluginManifest, Setting } from "obsidian";
 import { t } from "../i18n";
 import { InlineMathPreviewPosition } from "../input/types";
 import { GeneralSettingsHost } from "./settingGeneralSection";
+import { createSettingCard } from "./settingNavComponents";
 
 const REPO_URL = "https://github.com/LinXruan/Struct-LaTeX";
-const BUILD_TAG = "124";
+export const BUILD_TAG = "125";
 const LICENSE_URL = "https://github.com/LinXruan/Struct-LaTeX/blob/main/LICENSE";
 
 const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 343 94" fill="none" aria-label="Struct LaTeX">
@@ -18,10 +19,12 @@ const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 343 94" f
 </svg>`;
 
 /**
- * Renders special global parser/editor toggles.
+ * Renders special global parser/editor toggles inside a grouped card.
  */
 export function renderSpecialSettingsPage(parent: HTMLElement, host: GeneralSettingsHost): void {
-  new Setting(parent)
+  const card = createSettingCard(parent);
+
+  new Setting(card)
     .setName(t("settings.special.parseAmbiguousBars.name"))
     .setDesc(t("settings.special.parseAmbiguousBars.desc"))
     .addToggle((toggle) =>
@@ -32,7 +35,7 @@ export function renderSpecialSettingsPage(parent: HTMLElement, host: GeneralSett
       })
     );
 
-  new Setting(parent)
+  new Setting(card)
     .setName(t("settings.special.autoSizeParens.name"))
     .setDesc(t("settings.special.autoSizeParens.desc"))
     .addToggle((toggle) =>
@@ -42,7 +45,7 @@ export function renderSpecialSettingsPage(parent: HTMLElement, host: GeneralSett
       })
     );
 
-  new Setting(parent)
+  new Setting(card)
     .setName(t("settings.special.inlineMathPreview.name"))
     .setDesc(t("settings.special.inlineMathPreview.desc"))
     .addDropdown((dd) =>
@@ -59,6 +62,9 @@ export function renderSpecialSettingsPage(parent: HTMLElement, host: GeneralSett
     );
 }
 
+/**
+ * Renders plugin brand logo and metadata card.
+ */
 export function renderAboutPage(parent: HTMLElement, manifest: PluginManifest): void {
   const logoWrap = parent.createDiv({ cls: "struct-latex-about-logo" });
   const parsed = new DOMParser().parseFromString(LOGO_SVG, "image/svg+xml");
@@ -67,22 +73,24 @@ export function renderAboutPage(parent: HTMLElement, manifest: PluginManifest): 
     logoWrap.appendChild(parent.ownerDocument.importNode(svgEl, true));
   }
 
-  new Setting(parent)
+  const card = createSettingCard(parent);
+
+  new Setting(card)
     .setName(t("settings.about.version"))
     .setDesc(`v${manifest.version} (${BUILD_TAG})`);
 
-  new Setting(parent)
+  new Setting(card)
     .setName(t("settings.about.author"))
     .setDesc(manifest.author || "LinXruan");
 
-  const repoSetting = new Setting(parent).setName(t("settings.about.repo"));
+  const repoSetting = new Setting(card).setName(t("settings.about.repo"));
   repoSetting.descEl.createEl("a", {
     text: REPO_URL,
     href: REPO_URL,
     attr: { target: "_blank", rel: "noopener noreferrer" },
   });
 
-  const licenseSetting = new Setting(parent).setName(t("settings.about.license"));
+  const licenseSetting = new Setting(card).setName(t("settings.about.license"));
   licenseSetting.descEl.createEl("a", {
     text: t("settings.about.licenseValue"),
     href: LICENSE_URL,

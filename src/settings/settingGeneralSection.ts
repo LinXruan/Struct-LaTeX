@@ -1,5 +1,5 @@
-import { App, Notice, Platform, Setting } from "obsidian";
-import { LanguageSetting, t } from "../i18n";
+import { App, Notice, Platform, PluginManifest, setIcon, Setting } from "obsidian";
+import { t } from "../i18n";
 import { keyboardEventToCombo, normalizeKeyCombo, resolveFeatureKeybind } from "../input/keybindUtils";
 import { TriggerCategory, TriggerRule } from "../input/triggerTypes";
 import { DEFAULT_PLUGIN_SETTINGS, OutputDialect, PluginSettings } from "../input/types";
@@ -10,6 +10,7 @@ import {
   removeCommandFromMobileToolbar,
 } from "./mobileToolbarSync";
 import { attachKeyRecorder } from "./ruleInlinePanels";
+import { createSettingCard } from "./settingNavComponents";
 import { renderTriggerRulesSection } from "./settingTriggerList";
 import { TriggerStore } from "./triggerStore";
 
@@ -18,7 +19,9 @@ export type SettingsPage = "home" | SettingsSubPage;
 
 export interface GeneralSettingsHost {
   app: App;
+  manifest?: PluginManifest;
   settings: PluginSettings;
+  ruleStore?: { getRules(): readonly unknown[] };
   triggerStore?: TriggerStore;
   saveSettings(): Promise<void>;
   syncLocale(): void;
@@ -47,70 +50,17 @@ export interface KeybindFeaturePageOptions {
   ) => void;
 }
 
-export function renderLanguageSetting(
-  parent: HTMLElement,
-  host: GeneralSettingsHost,
-  onLanguageChanged: () => void
-): void {
-  new Setting(parent)
-    .setName(t("settings.language.name"))
-    .setDesc(t("settings.language.desc"))
-    .addDropdown((dd) =>
-      dd
-        .addOption("auto", t("settings.language.auto"))
-        .addOption("zh", t("settings.language.zh"))
-        .addOption("en", t("settings.language.en"))
-        .setValue(host.settings.language)
-        .onChange(async (v) => {
-          host.settings.language = v as LanguageSetting;
-          await host.saveSettings();
-          if (host.onLanguageUpdated) await host.onLanguageUpdated();
-          else host.syncLocale();
-          onLanguageChanged();
-        })
-    );
-}
-
-export function renderSettingsHomePage(
-  parent: HTMLElement,
-  host: GeneralSettingsHost,
-  callbacks: { onLanguageChanged: () => void; onOpenPage: (page: SettingsSubPage) => void }
-): void {
-  renderLanguageSetting(parent, host, callbacks.onLanguageChanged);
-  const navItems: Array<{ page: SettingsSubPage; name: string; desc: string }> = [
-    { page: "input", name: t("settings.nav.input"), desc: t("settings.nav.inputDesc") },
-    { page: "delete", name: t("settings.nav.delete"), desc: t("settings.nav.deleteDesc") },
-    { page: "jump", name: t("settings.nav.jump"), desc: t("settings.nav.jumpDesc") },
-    { page: "special", name: t("settings.nav.special"), desc: t("settings.nav.specialDesc") },
-    { page: "about", name: t("settings.nav.about"), desc: t("settings.nav.aboutDesc") },
-  ];
-  for (const item of navItems) {
-    new Setting(parent)
-      .setName(item.name)
-      .setDesc(item.desc)
-      .addButton((btn) => btn.setButtonText(t("settings.nav.openBtn")).onClick(() => callbacks.onOpenPage(item.page)));
-  }
-}
-
-export function renderSubPageHeader(
-  parent: HTMLElement,
-  title: string,
-  onBack: () => void,
-  backText?: string
-): void {
-  const header = parent.createDiv({ cls: "struct-latex-subpage-header" });
-  header
-    .createEl("button", { cls: "struct-latex-editor-back-btn", text: backText ?? t("settings.nav.backHome") })
-    .addEventListener("click", onBack);
-  header.createEl("h3", { cls: "struct-latex-editor-title", text: title });
-}
-
+/**
+ * Renders the top Smart Input toggle & output dialect card.
+ */
 export function renderSmartInputSettings(
   parent: HTMLElement,
   host: GeneralSettingsHost,
   onDialectChanged: () => void
 ): void {
-  new Setting(parent)
+  const card = createSettingCard(parent);
+
+  new Setting(card)
     .setName(t("settings.smartInput.name"))
     .setDesc(t("settings.smartInput.desc"))
     .addToggle((tToggle) =>
@@ -120,7 +70,7 @@ export function renderSmartInputSettings(
       })
     );
 
-  new Setting(parent)
+  new Setting(card)
     .setName(t("settings.dialect.name"))
     .setDesc(t("settings.dialect.desc"))
     .addDropdown((dd) =>
@@ -137,47 +87,35 @@ export function renderSmartInputSettings(
     );
 }
 
-export function renderAddRuleSetting(
-  parent: HTMLElement,
-  filePath: string,
-  ruleCount: number,
-  callbacks: { onAddText: () => void; onAddRegex: () => void; onAddJs: () => void }
-): Setting {
-  return new Setting(parent)
-    .setName(t("settings.addRule.name"))
-    .setDesc(t("settings.addRule.desc", { path: filePath, count: ruleCount }))
-    .addButton((b) => b.setButtonText(t("settings.addText")).onClick(callbacks.onAddText))
-    .addButton((b) => b.setButtonText(t("settings.addRegex")).onClick(callbacks.onAddRegex))
-    .addButton((b) => b.setButtonText(t("settings.addJs")).onClick(callbacks.onAddJs));
-}
-
 function renderMobileToolbarSection(parent: HTMLElement, app: App | undefined, category: TriggerCategory): void {
   if (!app) return;
   const fullCmdId = getFullCommandIdForCategory(category);
-  const setting = new Setting(parent)
+  new Setting(parent)
     .setName(t("trigger.mobileToolbar.name"))
-    .setDesc(t("trigger.mobileToolbar.desc"));
-  const btn = setting.controlEl.createEl("button");
-  const syncUi = () => {
-    const added = isCommandInMobileToolbar(app, fullCmdId);
-    btn.setText(added ? t("trigger.mobileToolbar.removeBtn") : t("trigger.mobileToolbar.addBtn"));
-    btn.toggleClass("mod-cta", !added);
-  };
-  syncUi();
-  btn.addEventListener("click", () => {
-    if (isCommandInMobileToolbar(app, fullCmdId)) {
-      removeCommandFromMobileToolbar(app, fullCmdId);
-      new Notice(t("trigger.mobileToolbar.removedNotice"));
-    } else {
-      addCommandToMobileToolbar(app, fullCmdId);
-      new Notice(t("trigger.mobileToolbar.addedNotice"));
-    }
-    syncUi();
-  });
+    .setDesc(t("trigger.mobileToolbar.desc"))
+    .addToggle((toggle) => {
+      toggle.setValue(isCommandInMobileToolbar(app, fullCmdId));
+      toggle.onChange((checked) => {
+        if (checked) {
+          addCommandToMobileToolbar(app, fullCmdId);
+          new Notice(t("trigger.mobileToolbar.addedNotice"));
+        } else {
+          removeCommandFromMobileToolbar(app, fullCmdId);
+          new Notice(t("trigger.mobileToolbar.removedNotice"));
+        }
+        toggle.setValue(isCommandInMobileToolbar(app, fullCmdId));
+      });
+    });
 }
 
+/**
+ * Renders the grouped feature settings card (toggle, keybind, mobile toolbar toggle)
+ * followed by its input trigger rules list.
+ */
 export function renderKeybindFeaturePage(parent: HTMLElement, options: KeybindFeaturePageOptions): () => void {
-  new Setting(parent)
+  const card = createSettingCard(parent);
+
+  new Setting(card)
     .setName(options.toggleName)
     .setDesc(options.toggleDesc)
     .addToggle((toggle) => toggle.setValue(options.enabled).onChange(async (v) => options.onToggle(v)));
@@ -185,13 +123,12 @@ export function renderKeybindFeaturePage(parent: HTMLElement, options: KeybindFe
   let inputEl: HTMLInputElement | null = null;
   let lastValid = resolveFeatureKeybind(options.keybindValue, options.defaultKeybind);
 
-  const keySetting = new Setting(parent)
+  const keySetting = new Setting(card)
     .setName(t("settings.keybind.name"))
     .setDesc(t("settings.keybind.desc"))
+    .setClass("struct-latex-keybind-setting")
     .addText((text) => {
-      text
-        .setPlaceholder(options.keybindPlaceholder ?? options.defaultKeybind)
-        .setValue(lastValid);
+      text.setPlaceholder(options.keybindPlaceholder ?? options.defaultKeybind).setValue(lastValid);
       inputEl = text.inputEl;
       inputEl.addClass("struct-latex-keybind-input");
       text.onChange((val) => void commitKeybind(val, false));
@@ -240,26 +177,40 @@ export function renderKeybindFeaturePage(parent: HTMLElement, options: KeybindFe
     });
   }
 
-  const recBtn = keySetting.controlEl.createEl("button", { text: t("fields.recordKey") });
+  const recBtn = keySetting.controlEl.createEl("button", {
+    type: "button",
+    cls: "struct-latex-keybind-rec-btn",
+    text: t("settings.keybind.recordShort"),
+  });
   const disposeRecorder = attachKeyRecorder(
     recBtn,
     Platform.isMacOS,
     (combo) => void commitKeybind(combo, true),
     keyboardEventToCombo,
-    false
+    false,
+    t("settings.keybind.recordShort")
   );
-  const resetBtn = keySetting.controlEl.createEl("button", { text: t("settings.keybind.resetDefault") });
+
+  const resetBtn = keySetting.controlEl.createEl("button", {
+    type: "button",
+    cls: "clickable-icon struct-latex-keybind-reset-btn",
+  });
+  setIcon(resetBtn, "rotate-ccw");
+  const resetTip = t("settings.keybind.resetTooltip");
+  resetBtn.setAttr("aria-label", resetTip);
+  resetBtn.setAttr("title", resetTip);
   resetBtn.addEventListener("click", () => {
     disposeRecorder();
     void commitKeybind(options.defaultKeybind, true);
   });
 
-  renderMobileToolbarSection(parent, options.app, options.category);
+  renderMobileToolbarSection(card, options.app, options.category);
 
   let disposeTriggerList = () => {};
-  if (options.triggerStore && options.onOpenTriggerEditor) {
+  if (options.triggerStore && options.onOpenTriggerEditor && options.app) {
     const openEditor = options.onOpenTriggerEditor;
     disposeTriggerList = renderTriggerRulesSection(parent, {
+      app: options.app,
       category: options.category,
       triggerStore: options.triggerStore,
       onOpenEditor: (rule, isNew, onSaved) => openEditor(rule, options.category, isNew, onSaved),

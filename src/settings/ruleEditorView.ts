@@ -11,6 +11,7 @@ export interface RuleEditorViewOptions {
   dialect: OutputDialect;
   parseAmbiguousBars: boolean;
   isNew: boolean;
+  hideHeader?: boolean;
   onSave: (updated: InputRule) => Promise<void>;
   onCancel: () => void;
 }
@@ -139,21 +140,23 @@ export function renderRuleEditorView(
     options.onCancel();
   };
 
-  const typeTitle =
-    draft.type === "text"
-      ? t("modal.title.text")
-      : draft.type === "regex"
-      ? t("modal.title.regex")
-      : t("modal.title.js");
+  if (!options.hideHeader) {
+    const typeTitle =
+      draft.type === "text"
+        ? t("modal.title.text")
+        : draft.type === "regex"
+        ? t("modal.title.regex")
+        : t("modal.title.js");
 
-  const header = view.createDiv({ cls: "struct-latex-editor-header" });
-  header
-    .createEl("button", { cls: "struct-latex-editor-back-btn", text: t("editor.back") })
-    .addEventListener("click", handleCancel);
-  header.createEl("h3", {
-    cls: "struct-latex-editor-title",
-    text: `${options.isNew ? t("modal.newPrefix") : t("modal.editPrefix")}${typeTitle}`,
-  });
+    const header = view.createDiv({ cls: "struct-latex-editor-header" });
+    header
+      .createEl("button", { type: "button", cls: "struct-latex-editor-back-btn", text: t("settings.nav.back") })
+      .addEventListener("click", handleCancel);
+    header.createEl("h3", {
+      cls: "struct-latex-editor-title",
+      text: `${options.isNew ? t("modal.newPrefix") : t("modal.editPrefix")}${typeTitle}`,
+    });
+  }
 
   new Setting(view).setName(t("modal.ruleName")).addText((tInput) =>
     tInput.setValue(draft.name).onChange((v) => {

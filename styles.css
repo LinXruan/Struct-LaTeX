@@ -48,24 +48,257 @@
   display: none;
 }
 
-.struct-latex-rule-row.struct-latex-flip-none {
-  transition: none;
+/* ==========================================================================
+   Settings Layout: Grouped Cards & Full-Row Clickable Navigation
+   ========================================================================== */
+
+.struct-latex-section-label {
+  margin: 14px 4px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
 }
 
-.struct-latex-flip-animate {
-  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
+.struct-latex-card {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-l, 12px);
+  background: var(--background-secondary);
+  overflow: hidden;
+  margin-bottom: 14px;
 }
 
-.struct-latex-subpage-header,
-.struct-latex-editor-header {
+.struct-latex-card > .setting-item {
+  margin: 0;
+  padding: 12px 14px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.struct-latex-card > .setting-item:first-child {
+  border-top: none;
+}
+
+.struct-latex-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  user-select: none;
+  border-top: 1px solid var(--background-modifier-border);
+  transition: background-color 120ms ease;
+}
+
+.struct-latex-nav-row:first-child {
+  border-top: none;
+}
+
+.struct-latex-nav-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.struct-latex-nav-row:active {
+  background: var(--background-modifier-active-hover, var(--background-modifier-hover));
+}
+
+.struct-latex-nav-row:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: -2px;
+}
+
+.struct-latex-nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-m, 8px);
+  background: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+  color: var(--interactive-accent);
+}
+
+.struct-latex-nav-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.struct-latex-nav-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.struct-latex-nav-title {
+  font-size: var(--font-ui-medium, 14px);
+  font-weight: 500;
+  color: var(--text-normal);
+  line-height: 1.35;
+}
+
+.struct-latex-nav-desc {
+  margin-top: 2px;
+  font-size: var(--font-ui-smaller, 12px);
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.struct-latex-nav-trailing {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  max-width: 44%;
+}
+
+.struct-latex-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-faint);
+}
+
+.struct-latex-status-dot.is-on {
+  background: var(--color-green);
+}
+
+.struct-latex-nav-summary {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.struct-latex-nav-summary.is-mono {
+  font-family: var(--font-monospace);
+  font-size: 11.5px;
+  padding: 2px 6px;
+  border-radius: var(--radius-s);
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.struct-latex-nav-chevron {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-faint);
+}
+
+.struct-latex-nav-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ==========================================================================
+   Navigation Headers: Desktop Breadcrumb & Mobile Full-Screen Modal AppBar
+   ========================================================================== */
+
+.struct-latex-breadcrumb-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.struct-latex-back-icon-btn {
+  flex-shrink: 0;
+}
+
+.struct-latex-breadcrumb-trail {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--background-modifier-border);
+  gap: 6px;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.3;
 }
+
+.struct-latex-breadcrumb-parent {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.struct-latex-breadcrumb-sep {
+  color: var(--text-faint);
+}
+
+.struct-latex-breadcrumb-current {
+  color: var(--text-normal);
+  font-weight: 600;
+}
+
+.modal.struct-latex-page-modal {
+  width: 100vw;
+  max-width: 100vw;
+  height: 100%;
+  max-height: 100%;
+  margin: 0;
+  border-radius: 0;
+  border: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--background-primary);
+}
+
+.modal.struct-latex-page-modal > .modal-close-button,
+.modal.struct-latex-page-modal > .modal-header {
+  display: none;
+}
+
+.modal.struct-latex-page-modal > .modal-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+}
+
+.struct-latex-mobile-appbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: calc(env(safe-area-inset-top, 0px) + 6px) 12px 6px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  flex-shrink: 0;
+}
+
+.struct-latex-mobile-back-btn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.struct-latex-mobile-appbar-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.struct-latex-mobile-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 16px calc(env(safe-area-inset-bottom, 0px) + 28px);
+}
+
+/* ==========================================================================
+   About Logo & Keybind Controls
+   ========================================================================== */
 
 .struct-latex-about-logo {
   display: flex;
@@ -90,13 +323,31 @@ body.theme-dark .struct-latex-logo-brace {
   fill: #a78bfa;
 }
 
+.struct-latex-keybind-setting .setting-item-control {
+  gap: 6px;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
 .struct-latex-keybind-input {
-  width: 140px;
+  width: 132px;
+  min-width: 108px;
   font-family: var(--font-monospace);
+  text-align: center;
+}
+
+.struct-latex-keybind-rec-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.struct-latex-keybind-reset-btn {
+  flex-shrink: 0;
+  color: var(--text-muted);
 }
 
 .struct-latex-field-error {
-  margin: -4px 0 10px;
+  margin: -6px 0 12px;
   padding: 6px 10px;
   border-radius: var(--radius-s);
   border: 1px solid var(--text-error);
@@ -104,91 +355,197 @@ body.theme-dark .struct-latex-logo-brace {
   font-size: 12px;
 }
 
-.struct-latex-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 8px;
-  align-items: center;
-}
+/* ==========================================================================
+   Rule Section Header, Search Bar & Soft Filter Chips
+   ========================================================================== */
 
-.struct-latex-search {
-  flex: 1 1 180px;
-}
-
-.struct-latex-io-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.struct-latex-type-filter-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: 4px;
-}
-
-.struct-latex-type-toggle {
-  opacity: 0.58;
-  border: 1px solid var(--background-modifier-border);
-  transition: opacity 120ms ease, background-color 120ms ease, border-color 120ms ease, color 120ms ease;
-}
-
-.struct-latex-type-toggle.is-active {
-  opacity: 1;
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-  border-color: var(--interactive-accent);
-}
-
-.struct-latex-io-btn.is-active:not(.mod-warning) {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-  border-color: var(--interactive-accent);
-}
-
-.struct-latex-io-btn.mod-warning.is-active {
-  box-shadow: 0 0 0 2px var(--text-error);
-}
-
-.struct-latex-inline-panel {
-  margin-bottom: 12px;
-  padding: 12px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-m);
-  background: var(--background-secondary);
-}
-
-.struct-latex-inline-panel-header {
+.struct-latex-rule-section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-top: 4px;
+  margin-bottom: 6px;
 }
 
-.struct-latex-inline-panel-title {
-  font-size: 14px;
+.struct-latex-rule-section-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.struct-latex-rule-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.struct-latex-count-badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+}
+
+.struct-latex-rule-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.struct-latex-add-menu-btn {
+  font-size: 12.5px;
+  padding: 4px 10px;
+  min-height: 30px;
+  white-space: nowrap;
+}
+
+.struct-latex-more-btn {
+  width: 30px;
+  height: 30px;
+}
+
+.struct-latex-rule-section-subtitle {
+  margin-bottom: 10px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.struct-latex-toolbar {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.struct-latex-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.struct-latex-search-icon {
+  position: absolute;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  pointer-events: none;
+  color: var(--text-faint);
+}
+
+.struct-latex-search-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.struct-latex-search-wrap .struct-latex-search {
+  width: 100%;
+  padding-left: 30px;
+  padding-right: 28px;
+}
+
+.struct-latex-search-clear {
+  position: absolute;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+}
+
+.struct-latex-search-clear svg {
+  width: 13px;
+  height: 13px;
+}
+
+.struct-latex-group-select {
+  flex: 0 0 auto;
+  max-width: 150px;
+}
+
+.struct-latex-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.struct-latex-filter-chip {
+  padding: 4px 12px;
+  min-height: 28px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: none;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.struct-latex-filter-chip:hover {
+  background: var(--background-modifier-hover);
+}
+
+.struct-latex-filter-chip.is-active {
+  color: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  background: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
   font-weight: 600;
 }
 
-.struct-latex-inline-panel-body {
-  margin: 0 0 10px;
+/* ==========================================================================
+   Action Modals (Export / Import / Reset Confirm)
+   ========================================================================== */
+
+.modal.struct-latex-action-modal .modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.struct-latex-action-modal-body {
+  margin: 0;
   color: var(--text-normal);
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1.5;
 }
 
-.struct-latex-inline-panel-actions {
+.struct-latex-modal-footer {
   display: flex;
-  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 8px;
-  margin-bottom: 8px;
+  margin-top: 4px;
+}
+
+/* ==========================================================================
+   Rule Rows, Drag & Drop, and Editor View
+   ========================================================================== */
+
+.struct-latex-rule-row.struct-latex-flip-none {
+  transition: none;
+}
+
+.struct-latex-flip-animate {
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.struct-latex-editor-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
 }
 
 .struct-latex-rule-list {
@@ -396,7 +753,6 @@ body.struct-latex-is-dragging * {
   white-space: nowrap;
 }
 
-.struct-latex-subpage-header .struct-latex-editor-title,
 .struct-latex-editor-header .struct-latex-editor-title {
   margin: 0;
   padding: 0;
@@ -482,6 +838,28 @@ body.struct-latex-is-dragging * {
 }
 
 @media (max-width: 640px) {
+  .struct-latex-card > .setting-item {
+    padding: 12px;
+  }
+  .struct-latex-keybind-setting .setting-item-control {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .struct-latex-keybind-input {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+  }
+  .struct-latex-toolbar {
+    flex-wrap: wrap;
+  }
+  .struct-latex-search-wrap {
+    flex: 1 1 100%;
+  }
+  .struct-latex-group-select {
+    max-width: none;
+    width: 100%;
+  }
   .struct-latex-rule-row {
     grid-template-columns: 16px 1fr auto;
   }

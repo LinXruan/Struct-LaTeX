@@ -1,5 +1,5 @@
-import { Setting } from "obsidian";
 import { t } from "../i18n";
+import { resolveFeatureKeybind } from "../input/keybindUtils";
 import { TriggerCategory } from "../input/triggerTypes";
 import { DEFAULT_PLUGIN_SETTINGS, PluginSettings } from "../input/types";
 import { StructuralJumpMode } from "../parser/types";
@@ -7,20 +7,14 @@ import {
   GeneralSettingsHost,
   KeybindFeaturePageOptions,
   renderKeybindFeaturePage,
-  renderSubPageHeader,
 } from "./settingGeneralSection";
+import { createSettingCard, renderNavRow } from "./settingNavComponents";
 
 export type JumpSubPage = StructuralJumpMode;
 
-export interface JumpSectionCallbacks {
-  onBackHome: () => void;
-  onSelectMode: (mode: JumpSubPage) => void;
-  onBackToHub: () => void;
-  onOpenTriggerEditor?: KeybindFeaturePageOptions["onOpenTriggerEditor"];
-}
-
-interface JumpModeSpec {
+export interface JumpModeSpec {
   mode: JumpSubPage;
+  icon: string;
   category: TriggerCategory;
   nameKey:
     | "settings.jump.rightSingle.name"
@@ -58,6 +52,7 @@ interface JumpModeSpec {
 const JUMP_MODE_SPECS: readonly JumpModeSpec[] = [
   {
     mode: "rightSingle",
+    icon: "arrow-right-to-line",
     category: "jump",
     nameKey: "settings.jump.rightSingle.name",
     descKey: "settings.jump.rightSingle.desc",
@@ -69,6 +64,7 @@ const JUMP_MODE_SPECS: readonly JumpModeSpec[] = [
   },
   {
     mode: "rightMulti",
+    icon: "chevrons-right",
     category: "jumpRightMulti",
     nameKey: "settings.jump.rightMulti.name",
     descKey: "settings.jump.rightMulti.desc",
@@ -80,6 +76,7 @@ const JUMP_MODE_SPECS: readonly JumpModeSpec[] = [
   },
   {
     mode: "leftSingle",
+    icon: "arrow-left-to-line",
     category: "jumpLeftSingle",
     nameKey: "settings.jump.leftSingle.name",
     descKey: "settings.jump.leftSingle.desc",
@@ -91,6 +88,7 @@ const JUMP_MODE_SPECS: readonly JumpModeSpec[] = [
   },
   {
     mode: "leftMulti",
+    icon: "chevrons-left",
     category: "jumpLeftMulti",
     nameKey: "settings.jump.leftMulti.name",
     descKey: "settings.jump.leftMulti.desc",
@@ -102,40 +100,50 @@ const JUMP_MODE_SPECS: readonly JumpModeSpec[] = [
   },
 ];
 
-function renderJumpHubPage(
+export function getJumpModeSpec(mode: JumpSubPage): JumpModeSpec {
+  return JUMP_MODE_SPECS.find((s) => s.mode === mode) ?? JUMP_MODE_SPECS[0];
+}
+
+/**
+ * Renders the 4 jump mode navigation rows inside a grouped card.
+ */
+export function renderJumpHubPage(
   parent: HTMLElement,
+  host: GeneralSettingsHost,
   onSelectMode: (mode: JumpSubPage) => void
 ): void {
+  const card = createSettingCard(parent);
+  const settingsRecord: PluginSettings = host.settings;
+
   for (const spec of JUMP_MODE_SPECS) {
-    new Setting(parent)
-      .setName(t(spec.nameKey))
-      .setDesc(t(spec.descKey))
-      .addButton((btn) =>
-        btn.setButtonText(t("settings.nav.openBtn")).onClick(() => onSelectMode(spec.mode))
-      );
+    const enabled = settingsRecord[spec.enabledKey];
+    const defaultKey = DEFAULT_PLUGIN_SETTINGS[spec.keybindKey];
+    const keybind = spec.allowEmpty
+      ? settingsRecord[spec.keybindKey].trim() || t("settings.nav.unbound")
+      : resolveFeatureKeybind(settingsRecord[spec.keybindKey], defaultKey);
+
+    renderNavRow(card, {
+      icon: spec.icon,
+      title: t(spec.nameKey),
+      desc: t(spec.descKey),
+      summary: enabled ? keybind : t("settings.nav.summaryOff"),
+      summaryMonospace: enabled && (spec.allowEmpty ? settingsRecord[spec.keybindKey].trim().length > 0 : true),
+      statusDot: enabled ? "on" : "off",
+      onClick: () => onSelectMode(spec.mode),
+    });
   }
 }
 
-export function renderJumpSection(
+/**
+ * Renders the detail view for a single jump mode.
+ */
+export function renderJumpDetailPage(
   parent: HTMLElement,
-  activeMode: JumpSubPage | null,
+  mode: JumpSubPage,
   host: GeneralSettingsHost,
-  callbacks: JumpSectionCallbacks
+  onOpenTriggerEditor?: KeybindFeaturePageOptions["onOpenTriggerEditor"]
 ): () => void {
-  if (!activeMode) {
-    renderSubPageHeader(parent, t("settings.nav.jump"), callbacks.onBackHome);
-    renderJumpHubPage(parent, callbacks.onSelectMode);
-    return () => {};
-  }
-
-  const spec = JUMP_MODE_SPECS.find((s) => s.mode === activeMode) ?? JUMP_MODE_SPECS[0];
-  renderSubPageHeader(
-    parent,
-    t(spec.nameKey),
-    callbacks.onBackToHub,
-    t("settings.jump.backToHub")
-  );
-
+  const spec = getJumpModeSpec(mode);
   const settingsRecord: PluginSettings = host.settings;
   const defaultKey = DEFAULT_PLUGIN_SETTINGS[spec.keybindKey];
 
@@ -158,6 +166,6 @@ export function renderJumpSection(
       settingsRecord[spec.keybindKey] = normalized;
       await host.saveSettings();
     },
-    onOpenTriggerEditor: callbacks.onOpenTriggerEditor,
+    onOpenTriggerEditor,
   });
 }

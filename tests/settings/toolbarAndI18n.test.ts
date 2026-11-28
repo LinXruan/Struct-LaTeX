@@ -7,7 +7,7 @@ import { formatTriggerBadge, matchesKeyEventCombo, resolveFeatureKeybind } from 
 import { evaluateRulePreview } from "../../src/input/previewEvaluator";
 import { DEFAULT_PLUGIN_SETTINGS, InputRule, RuleType } from "../../src/input/types";
 import { validateRule } from "../../src/input/validation";
-import { createDefaultFilterState, filterRules } from "../../src/settings/settingToolbar";
+import { createDefaultFilterState, filterRules } from "../../src/settings/ruleFilter";
 
 const SAMPLE_RULES: InputRule[] = [
   {
@@ -148,6 +148,10 @@ describe("I18n — Dictionary Parity, Obsidian Language Resolution & Localized M
       assert.equal(t("settings.nav.jump", undefined, "zh"), "光标跳转");
       assert.equal(t("settings.nav.special", undefined, "zh"), "特殊设置");
       assert.equal(t("settings.nav.about", undefined, "zh"), "关于");
+      assert.equal(t("settings.group.core", undefined, "zh"), "核心功能");
+      assert.equal(t("settings.group.general", undefined, "zh"), "通用与关于");
+      assert.equal(t("settings.addRule.btn", undefined, "zh"), "+ 新增");
+      assert.equal(t("settings.keybind.recordShort", undefined, "en"), "Record");
       assert.equal(t("settings.keybind.name", undefined, "zh"), "按键绑定");
       assert.equal(t("trigger.mobileToolbar.name", undefined, "zh"), "移动端工具栏");
       assert.equal(t("trigger.addRule.name", undefined, "zh"), "输入触发规则");

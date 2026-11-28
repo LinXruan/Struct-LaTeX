@@ -1,116 +1,137 @@
+import { setIcon } from "obsidian";
 import { t } from "../i18n";
-import { InputRule, RuleType } from "../input/types";
-import type { InlinePanelMode } from "./ruleInlinePanels";
+import { RuleType } from "../input/types";
+import { FilterState } from "./ruleFilter";
+import { openActionMenu } from "./settingNavComponents";
 
-export interface FilterState {
-  searchQuery: string;
-  groupFilter: string;
-  enabledTypes: Set<RuleType>;
-}
+export { createDefaultFilterState, createDraftRule, filterRules, type FilterState } from "./ruleFilter";
 
 export interface ToolbarHandle {
-  syncGroups: (rules: readonly { group: string }[]) => void;
-  syncActivePanel: (mode: InlinePanelMode | null) => void;
+  syncRulesMeta: (rules: readonly { group: string }[]) => void;
 }
 
-export function createDefaultFilterState(): FilterState {
-  return {
-    searchQuery: "",
-    groupFilter: "all",
-    enabledTypes: new Set<RuleType>(["js", "regex", "text"]),
+export interface RuleSectionToolbarOptions {
+  title: string;
+  subtitle?: string;
+  rules: readonly { group: string }[];
+  filter: FilterState;
+  onFilterChanged: () => void;
+  onAddText: () => void;
+  onAddRegex: () => void;
+  onAddJs: () => void;
+  onExport: () => void;
+  onImport: () => void;
+  onReset: () => void;
+  labels?: {
+    addTextLabel?: string;
+    exportText?: string;
+    importText?: string;
+    resetText?: string;
+    textToggleText?: string;
   };
 }
 
-export function createDraftRule(type: RuleType): InputRule {
-  const id = `user-${type}-${Date.now().toString(36)}`;
-  if (type === "text") {
-    return {
-      id,
-      name: t("draft.textName"),
-      group: t("draft.group"),
-      type: "text",
-      enabled: true,
-      scope: "math",
-      triggerMode: "auto",
-      trigger: "",
-      replacement: "",
-    };
-  }
-  if (type === "regex") {
-    return {
-      id,
-      name: t("draft.regexName"),
-      group: t("draft.group"),
-      type: "regex",
-      enabled: true,
-      scope: "math",
-      triggerMode: "auto",
-      trigger: "",
-      replacement: "",
-      exampleInput: "",
-    };
-  }
-  return {
-    id,
-    name: t("draft.jsName"),
-    group: t("draft.group"),
-    type: "js",
-    enabled: true,
-    scope: "math",
-    triggerMode: "auto",
-    exampleInput: "",
-    code: t("draft.jsTemplate"),
-  };
-}
-
-export function filterRules(rules: readonly InputRule[], filter: FilterState): InputRule[] {
-  if (filter.enabledTypes.size === 0) return [];
-
-  const query = filter.searchQuery.trim().toLowerCase();
-  const matched: InputRule[] = [];
-
-  for (const r of rules) {
-    if (!filter.enabledTypes.has(r.type)) continue;
-    if (filter.groupFilter !== "all" && r.group !== filter.groupFilter) continue;
-    if (query) {
-      const hay = [
-        r.name,
-        r.group,
-        r.id,
-        r.type === "text" || r.type === "regex" ? `${r.trigger} ${r.replacement}` : r.exampleInput ?? "",
-      ]
-        .join(" ")
-        .toLowerCase();
-      if (!hay.includes(query)) continue;
-    }
-    matched.push(r);
-  }
-  return matched;
-}
-
-export function renderFilterToolbar(
+/**
+ * Renders the unified rule section header (+ Add / More menu), search & group bar,
+ * and soft-outlined type filter chips.
+ */
+export function renderRuleSectionToolbar(
   containerEl: HTMLElement,
-  rules: readonly { group: string }[],
-  filter: FilterState,
-  onFilterChanged: () => void,
-  onIoAction: {
-    onExport: () => void;
-    onImport: () => void;
-    onReset: () => void;
-    labels?: { exportText: string; importText: string; resetText: string; textToggleText?: string };
-  }
+  options: RuleSectionToolbarOptions
 ): ToolbarHandle {
+  const { filter, onFilterChanged, labels } = options;
+
+  const header = containerEl.createDiv({ cls: "struct-latex-rule-section-header" });
+  const titleGroup = header.createDiv({ cls: "struct-latex-rule-section-title-group" });
+  titleGroup.createSpan({ cls: "struct-latex-rule-section-title", text: options.title });
+  const countBadge = titleGroup.createSpan({ cls: "struct-latex-count-badge" });
+
+  const headerActions = header.createDiv({ cls: "struct-latex-rule-section-actions" });
+  const addBtn = headerActions.createEl("button", {
+    type: "button",
+    cls: "struct-latex-add-menu-btn",
+    text: t("settings.addRule.btn"),
+  });
+  addBtn.addEventListener("click", (ev) => {
+    openActionMenu(ev, addBtn, [
+      {
+        title: labels?.addTextLabel ?? t("settings.addText.label"),
+        icon: "replace",
+        onSelect: options.onAddText,
+      },
+      {
+        title: t("settings.addRegex.label"),
+        icon: "regex",
+        onSelect: options.onAddRegex,
+      },
+      {
+        title: t("settings.addJs.label"),
+        icon: "code-2",
+        onSelect: options.onAddJs,
+      },
+    ]);
+  });
+
+  const moreBtn = headerActions.createEl("button", {
+    type: "button",
+    cls: "clickable-icon struct-latex-more-btn",
+  });
+  setIcon(moreBtn, "more-vertical");
+  const moreLabel = t("toolbar.moreActions");
+  moreBtn.setAttr("aria-label", moreLabel);
+  moreBtn.setAttr("title", moreLabel);
+  moreBtn.addEventListener("click", (ev) => {
+    openActionMenu(ev, moreBtn, [
+      {
+        title: labels?.exportText ?? t("toolbar.export"),
+        icon: "download",
+        onSelect: options.onExport,
+      },
+      {
+        title: labels?.importText ?? t("toolbar.import"),
+        icon: "upload",
+        onSelect: options.onImport,
+      },
+      { separator: true },
+      {
+        title: labels?.resetText ?? t("toolbar.reset"),
+        icon: "rotate-ccw",
+        warning: true,
+        onSelect: options.onReset,
+      },
+    ]);
+  });
+
+  if (options.subtitle) {
+    containerEl.createDiv({ cls: "struct-latex-rule-section-subtitle", text: options.subtitle });
+  }
+
   const toolbar = containerEl.createDiv({ cls: "struct-latex-toolbar" });
-  const searchInput = toolbar.createEl("input", {
+  const searchWrap = toolbar.createDiv({ cls: "struct-latex-search-wrap" });
+  const searchIcon = searchWrap.createSpan({ cls: "struct-latex-search-icon" });
+  setIcon(searchIcon, "search");
+
+  const searchInput = searchWrap.createEl("input", {
     type: "search",
     cls: "struct-latex-search",
     placeholder: t("toolbar.searchPlaceholder"),
   });
   searchInput.value = filter.searchQuery;
+
+  const clearBtn = searchWrap.createEl("button", {
+    type: "button",
+    cls: "clickable-icon struct-latex-search-clear",
+  });
+  setIcon(clearBtn, "x");
+  clearBtn.setAttr("aria-label", t("toolbar.clearSearch"));
+  const syncClearBtn = () => clearBtn.toggleClass("struct-latex-hidden", searchInput.value.length === 0);
+  syncClearBtn();
+
   const win = containerEl.ownerDocument.defaultView ?? window;
   let searchTimer: number | null = null;
   searchInput.addEventListener("input", () => {
     filter.searchQuery = searchInput.value;
+    syncClearBtn();
     if (searchTimer !== null) win.clearTimeout(searchTimer);
     searchTimer = win.setTimeout(() => {
       searchTimer = null;
@@ -118,8 +139,21 @@ export function renderFilterToolbar(
     }, 120);
   });
 
-  const groupSelect = toolbar.createEl("select", { cls: "dropdown" });
-  const syncGroups = (nextRules: readonly { group: string }[]) => {
+  clearBtn.addEventListener("click", () => {
+    if (searchTimer !== null) {
+      win.clearTimeout(searchTimer);
+      searchTimer = null;
+    }
+    searchInput.value = "";
+    filter.searchQuery = "";
+    syncClearBtn();
+    onFilterChanged();
+    searchInput.focus();
+  });
+
+  const groupSelect = toolbar.createEl("select", { cls: "dropdown struct-latex-group-select" });
+  const syncRulesMeta = (nextRules: readonly { group: string }[]) => {
+    countBadge.setText(String(nextRules.length));
     const groups = Array.from(new Set(nextRules.map((r) => r.group)));
     groupSelect.empty();
     groupSelect.createEl("option", { value: "all", text: t("toolbar.allGroups") });
@@ -127,34 +161,13 @@ export function renderFilterToolbar(
     filter.groupFilter = groups.includes(filter.groupFilter) ? filter.groupFilter : "all";
     groupSelect.value = filter.groupFilter;
   };
-  syncGroups(rules);
+  syncRulesMeta(options.rules);
   groupSelect.addEventListener("change", () => {
     filter.groupFilter = groupSelect.value;
     onFilterChanged();
   });
 
-  const ioBar = containerEl.createDiv({ cls: "struct-latex-io-bar" });
-  const labels = onIoAction.labels;
-  const ioButtons: Record<InlinePanelMode, HTMLButtonElement> = {
-    export: ioBar.createEl("button", { cls: "struct-latex-io-btn", text: labels?.exportText ?? t("toolbar.export") }),
-    import: ioBar.createEl("button", { cls: "struct-latex-io-btn", text: labels?.importText ?? t("toolbar.import") }),
-    reset: ioBar.createEl("button", { cls: "struct-latex-io-btn mod-warning", text: labels?.resetText ?? t("toolbar.reset") }),
-  };
-  ioButtons.export.addEventListener("click", onIoAction.onExport);
-  ioButtons.import.addEventListener("click", onIoAction.onImport);
-  ioButtons.reset.addEventListener("click", onIoAction.onReset);
-
-  const syncActivePanel = (activeMode: InlinePanelMode | null) => {
-    for (const mode of ["export", "import", "reset"] as const) {
-      const btn = ioButtons[mode];
-      const active = mode === activeMode;
-      btn.toggleClass("is-active", active);
-      btn.setAttr("aria-expanded", active ? "true" : "false");
-    }
-  };
-  syncActivePanel(null);
-
-  const toggleGroup = ioBar.createDiv({ cls: "struct-latex-type-filter-group" });
+  const chipRow = containerEl.createDiv({ cls: "struct-latex-filter-chips" });
   const typeButtons: Array<{ type: RuleType; label: string }> = [
     { type: "js", label: t("toolbar.toggleJs") },
     { type: "regex", label: t("toolbar.toggleRegex") },
@@ -162,17 +175,18 @@ export function renderFilterToolbar(
   ];
 
   for (const item of typeButtons) {
-    const btn = toggleGroup.createEl("button", {
-      cls: `struct-latex-type-toggle is-type-${item.type}`,
+    const chip = chipRow.createEl("button", {
+      type: "button",
+      cls: `struct-latex-filter-chip is-type-${item.type}`,
       text: item.label,
     });
     const syncState = () => {
       const active = filter.enabledTypes.has(item.type);
-      btn.toggleClass("is-active", active);
-      btn.setAttr("aria-pressed", active ? "true" : "false");
+      chip.toggleClass("is-active", active);
+      chip.setAttr("aria-pressed", active ? "true" : "false");
     };
     syncState();
-    btn.addEventListener("click", () => {
+    chip.addEventListener("click", () => {
       if (filter.enabledTypes.has(item.type)) {
         filter.enabledTypes.delete(item.type);
       } else {
@@ -183,5 +197,5 @@ export function renderFilterToolbar(
     });
   }
 
-  return { syncGroups, syncActivePanel };
+  return { syncRulesMeta };
 }

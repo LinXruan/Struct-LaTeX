@@ -5,7 +5,7 @@ import { TriggerCategory, TriggerRule } from "../input/triggerTypes";
 import { RuleType } from "../input/types";
 import { attachPointerDragSort, ReorderCallback } from "./ruleDragSort";
 import { renderTriggerGuardsFields } from "./ruleEditorFields";
-import { FilterState } from "./settingToolbar";
+import { FilterState } from "./ruleFilter";
 
 export interface TriggerRowCallbacks {
   category: TriggerCategory;
@@ -21,6 +21,7 @@ export interface TriggerEditorViewOptions {
   category: TriggerCategory;
   parseAmbiguousBars: boolean;
   isNew: boolean;
+  hideHeader?: boolean;
   onSave: (updated: TriggerRule) => Promise<void>;
   onCancel: () => void;
 }
@@ -191,15 +192,19 @@ export function renderTriggerRuleEditorView(
   container.empty();
   const view = container.createDiv({ cls: "struct-latex-editor-view" });
   const draft = cloneTriggerRule(options.rule);
-  const typeTitle =
-    draft.type === "text" ? t("modal.title.text") : draft.type === "regex" ? t("modal.title.regex") : t("modal.title.js");
+  if (!options.hideHeader) {
+    const typeTitle =
+      draft.type === "text" ? t("modal.title.text") : draft.type === "regex" ? t("modal.title.regex") : t("modal.title.js");
 
-  const header = view.createDiv({ cls: "struct-latex-editor-header" });
-  header.createEl("button", { cls: "struct-latex-editor-back-btn", text: t("editor.back") }).addEventListener("click", options.onCancel);
-  header.createEl("h3", {
-    cls: "struct-latex-editor-title",
-    text: `${options.isNew ? t("modal.newPrefix") : t("modal.editPrefix")}${typeTitle}`,
-  });
+    const header = view.createDiv({ cls: "struct-latex-editor-header" });
+    header
+      .createEl("button", { type: "button", cls: "struct-latex-editor-back-btn", text: t("settings.nav.back") })
+      .addEventListener("click", options.onCancel);
+    header.createEl("h3", {
+      cls: "struct-latex-editor-title",
+      text: `${options.isNew ? t("modal.newPrefix") : t("modal.editPrefix")}${typeTitle}`,
+    });
+  }
 
   new Setting(view).setName(t("modal.ruleName")).addText((ti) => ti.setValue(draft.name).onChange((v) => { draft.name = v; }));
   new Setting(view).setName(t("modal.ruleGroup")).addText((ti) =>

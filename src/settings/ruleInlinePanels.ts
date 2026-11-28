@@ -4,15 +4,6 @@ import { InputRule, OutputDialect } from "../input/types";
 import { validateRule } from "../input/validation";
 import { renderMathPreviewNow } from "./mathPreview";
 
-export type InlinePanelMode = "export" | "import" | "reset";
-
-export interface InlinePanelCallbacks {
-  getExportJson: () => string;
-  onImport: (raw: string) => Promise<void>;
-  onReset: () => Promise<void>;
-  onClose: () => void;
-}
-
 export function buildPreviewPanel(
   parentEl: HTMLElement,
   rule: InputRule,
@@ -49,12 +40,13 @@ export function attachKeyRecorder(
   isMac: boolean,
   onCaptured: (combo: string) => void,
   comboConverter: (ev: KeyboardEvent, isMac: boolean) => string | null,
-  twoStep = false
+  twoStep = false,
+  idleText?: string
 ): () => void {
   let recording = false;
   let step1: string | null = null;
   let cleanup: (() => void) | null = null;
-  const idleLabel = () => (twoStep ? t("fields.recordChord") : t("fields.recordKey"));
+  const idleLabel = () => idleText ?? (twoStep ? t("fields.recordChord") : t("fields.recordKey"));
 
   const stop = (label: string) => {
     recording = false;
@@ -134,91 +126,4 @@ export async function copyTextareaContent(textarea: HTMLTextAreaElement): Promis
   }
   textarea.focus();
   textarea.select();
-}
-
-function renderExportPanelBody(
-  panel: HTMLElement,
-  _doc: Document,
-  callbacks: InlinePanelCallbacks
-): void {
-  const actionBar = panel.createDiv({ cls: "struct-latex-inline-panel-actions" });
-  const copyBtn = actionBar.createEl("button", { cls: "mod-cta", text: t("modals.json.copy") });
-  const textarea = panel.createEl("textarea", {
-    cls: "struct-latex-js-editor struct-latex-json-transfer",
-  });
-  textarea.value = callbacks.getExportJson();
-  textarea.readOnly = true;
-
-  copyBtn.addEventListener("click", () => {
-    void copyTextareaContent(textarea);
-  });
-}
-
-function renderImportPanelBody(panel: HTMLElement, callbacks: InlinePanelCallbacks): void {
-  const textarea = panel.createEl("textarea", {
-    cls: "struct-latex-js-editor struct-latex-json-transfer",
-  });
-  textarea.placeholder = t("panel.importPlaceholder");
-
-  const errEl = panel.createDiv({ cls: "struct-latex-modal-error struct-latex-hidden" });
-
-  const footer = panel.createDiv({ cls: "struct-latex-inline-panel-actions" });
-  footer.createEl("button", { text: t("modal.cancel") }).addEventListener("click", callbacks.onClose);
-  const importBtn = footer.createEl("button", { cls: "mod-cta", text: t("modals.json.importBtn") });
-
-  importBtn.addEventListener("click", () => {
-    void (async () => {
-      try {
-        errEl.addClass("struct-latex-hidden");
-        await callbacks.onImport(textarea.value);
-        new Notice(t("modals.json.importedNotice"));
-        callbacks.onClose();
-      } catch (err) {
-        errEl.removeClass("struct-latex-hidden");
-        errEl.setText((err as Error).message);
-      }
-    })();
-  });
-}
-
-function renderResetPanelBody(panel: HTMLElement, callbacks: InlinePanelCallbacks): void {
-  panel.createEl("p", { cls: "struct-latex-inline-panel-body", text: t("modals.reset.body") });
-  const footer = panel.createDiv({ cls: "struct-latex-inline-panel-actions" });
-  footer.createEl("button", { text: t("modal.cancel") }).addEventListener("click", callbacks.onClose);
-  const confirmBtn = footer.createEl("button", { cls: "mod-warning", text: t("modals.reset.confirm") });
-
-  confirmBtn.addEventListener("click", () => {
-    void (async () => {
-      await callbacks.onReset();
-      new Notice(t("modals.reset.doneNotice"));
-      callbacks.onClose();
-    })();
-  });
-}
-
-export function renderInlineActionPanel(
-  container: HTMLElement,
-  mode: InlinePanelMode,
-  callbacks: InlinePanelCallbacks
-): void {
-  container.empty();
-  const panel = container.createDiv({ cls: "struct-latex-inline-panel" });
-
-  const header = panel.createDiv({ cls: "struct-latex-inline-panel-header" });
-  const titleText =
-    mode === "export"
-      ? t("modals.json.exportTitle")
-      : mode === "import"
-      ? t("modals.json.importTitle")
-      : t("modals.reset.title");
-  header.createDiv({ cls: "struct-latex-inline-panel-title", text: titleText });
-  header.createEl("button", { text: t("panel.close") }).addEventListener("click", callbacks.onClose);
-
-  if (mode === "export") {
-    renderExportPanelBody(panel, container.ownerDocument, callbacks);
-  } else if (mode === "import") {
-    renderImportPanelBody(panel, callbacks);
-  } else {
-    renderResetPanelBody(panel, callbacks);
-  }
 }

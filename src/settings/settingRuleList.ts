@@ -1,9 +1,9 @@
 import { getLocale, t } from "../i18n";
 import { InputRule, OutputDialect } from "../input/types";
 import { LazyMathPreviewManager } from "./mathPreview";
+import { createDefaultFilterState, createDraftRule, filterRules, FilterState } from "./ruleFilter";
 import { renderRuleRow, RuleRowCallbacks } from "./ruleRowRenderer";
 import { RuleStore } from "./ruleStore";
-import { createDefaultFilterState, createDraftRule, filterRules, FilterState } from "./settingToolbar";
 
 export interface RuleListControllerHost {
   ruleStore: RuleStore;
